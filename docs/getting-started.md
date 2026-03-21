@@ -1,6 +1,6 @@
 # GoFast 快速开始
 
-> GoFast 是一个基于 Go 的快速开发框架，采用服务提供者 + 服务容器架构，设计灵感来自 [Goravel](https://github.com/goravel/goravel)。
+> GoFast 是一个基于 Go 的快速开发框架。
 
 ---
 
