@@ -109,7 +109,7 @@ func (r *Response) Success(data any, message ...string) error {
 
 // Fail 快速返回失败响应（默认业务码 code=1）。
 func (r *Response) Fail(status int, message string, code ...int) error {
-	bizCode := 1
+	bizCode := 0
 	if len(code) > 0 {
 		bizCode = code[0]
 	}
