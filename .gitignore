@@ -13,3 +13,16 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Runtime / Storage
+storage/
+*.db
+
+# Config (may contain secrets)
+# config.yaml

@@ -1,0 +1,50 @@
+# ── 服务器 ──────────────────────────────────────
+server:
+  name: GoFast
+  host: 0.0.0.0
+  port: 3000
+  mode: debug                # debug / release
+  read_timeout_sec: 30
+  write_timeout_sec: 30
+  idle_timeout_sec: 120
+  shutdown_timeout_sec: 10
+  prefork: false
+  body_limit_mb: 10
+  cors_allow_origins:
+    - "*"
+
+# ── 数据库 ──────────────────────────────────────
+database:
+  driver: sqlite             # sqlite / mysql / postgres / mssql
+  database: database/gofast.db
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 60      # 分钟
+  conn_max_idle_time: 30     # 分钟
+
+# ── 日志 ────────────────────────────────────────
+log:
+  level: debug               # debug / info / warn / error / fatal / panic
+  format: color              # color / json / text
+  output_path: storage/logs/app.log
+  max_size: 100              # MB
+  max_backups: 5
+  max_age: 30                # 天
+  compress: false
+
+# ── 文件系统 ────────────────────────────────────
+filesystem:
+  default: local
+  disks:
+    local:
+      driver: local
+      root: storage/app
+      url: /storage
+
+# ── 缓存 ────────────────────────────────────────
+cache:
+  driver: memory
+  memory:
+    shard_count: 32
+    clean_interval: 60       # 秒
+
