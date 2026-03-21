@@ -30,13 +30,13 @@ func Boot() foundation.Application {
 // 顺序即 Register → Boot 的执行顺序，请确保依赖在前。
 func providers() []foundation.ServiceProvider {
 	return []foundation.ServiceProvider{
-		&config.ServiceProvider{},     // 1. 配置（无依赖）
-		&log.ServiceProvider{},        // 2. 日志（依赖 config）
-		&cache.ServiceProvider{},      // 3. 缓存（依赖 config）
-		&database.ServiceProvider{},   // 4. 数据库（依赖 config + log）
-		&filesystem.ServiceProvider{}, // 5. 文件系统（依赖 config）
-		&validation.ServiceProvider{}, // 6. 验证器（无依赖）
-		&gohttp.ServiceProvider{},     // 7. HTTP 路由（依赖 config）
+		&config.ServiceProvider{},     // 1. 配置
+		&log.ServiceProvider{},        // 2. 日志
+		&cache.ServiceProvider{},      // 3. 缓存
+		&database.ServiceProvider{},   // 4. 数据库
+		&filesystem.ServiceProvider{}, // 5. 文件系统
+		&validation.ServiceProvider{}, // 6. 验证器
+		&gohttp.ServiceProvider{},     // 7. HTTP 路由
 		// 业务方可在此追加自定义 Provider
 	}
 }

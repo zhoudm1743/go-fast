@@ -42,6 +42,7 @@ go run main.go
 | 文档 | 说明 |
 |------|------|
 | [快速开始](docs/getting-started.md) | 环境要求、配置、启动、路由注册、模型定义 |
+| [控制器开发指南](docs/controller.md) | 控制器、请求验证、数据库、中间件完整示例 |
 | [容器 API](docs/container.md) | Bind / Singleton / Instance / Make 完整接口 |
 | [Facade 使用说明](docs/facade.md) | Config / Log / Cache / Orm / Route / Storage / Validator |
 | [编写自定义 Provider](docs/service-provider.md) | ServiceProvider 接口、延迟加载、关闭钩子 |

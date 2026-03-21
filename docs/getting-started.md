@@ -259,6 +259,7 @@ type Article struct {
 
 ## 十、下一步
 
+- [控制器开发指南](controller.md) — 控制器、验证、数据库、中间件完整示例
 - [容器 API](container.md) — 了解服务容器的完整接口
 - [Facade 使用说明](facade.md) — 每个 Facade 的详细用法
 - [编写自定义 Provider](service-provider.md) — 扩展框架能力

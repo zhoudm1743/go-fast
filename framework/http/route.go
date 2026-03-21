@@ -13,19 +13,21 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
-// route 实现 contracts.Route 接口，封装 Fiber。
+// route 实现 contracts.Route，封装 Fiber。
+// 应用代码通过 contracts.HandlerFunc / contracts.Context 与框架交互，
+// 不直接依赖任何 Fiber 类型。
 type route struct {
-	app    *fiber.App
-	cfg    contracts.Config
-	router fiber.Router
+	app       *fiber.App
+	cfg       contracts.Config
+	router    fiber.Router
+	validator contracts.Validation
 }
 
 // NewRoute 创建 HTTP 路由服务实例。
-func NewRoute(cfg contracts.Config) (contracts.Route, error) {
+func NewRoute(cfg contracts.Config, validator contracts.Validation) (contracts.Route, error) {
 	readTimeout := time.Duration(cfg.GetInt("server.read_timeout_sec", 30)) * time.Second
 	writeTimeout := time.Duration(cfg.GetInt("server.write_timeout_sec", 30)) * time.Second
 	idleTimeout := time.Duration(cfg.GetInt("server.idle_timeout_sec", 120)) * time.Second
-
 	name := cfg.GetString("server.name", "GoFast")
 
 	fiberCfg := fiber.Config{
@@ -44,20 +46,19 @@ func NewRoute(cfg contracts.Config) (contracts.Route, error) {
 	app := fiber.New(fiberCfg)
 
 	mode := cfg.GetString("server.mode", "debug")
-	app.Use(recover.New(recover.Config{
-		EnableStackTrace: mode != "release",
-	}))
+	app.Use(recover.New(recover.Config{EnableStackTrace: mode != "release"}))
 	app.Use(requestid.New())
 
 	allowOrigins := "*"
-	originsRaw := cfg.Get("server.cors_allow_origins")
-	if origins, ok := originsRaw.([]any); ok && len(origins) > 0 {
-		allowOrigins = ""
-		for i, o := range origins {
-			if i > 0 {
-				allowOrigins += ","
+	if originsRaw := cfg.Get("server.cors_allow_origins"); originsRaw != nil {
+		if origins, ok := originsRaw.([]any); ok && len(origins) > 0 {
+			allowOrigins = ""
+			for i, o := range origins {
+				if i > 0 {
+					allowOrigins += ","
+				}
+				allowOrigins += fmt.Sprintf("%v", o)
 			}
-			allowOrigins += fmt.Sprintf("%v", o)
 		}
 	}
 	app.Use(cors.New(cors.Config{
@@ -72,7 +73,7 @@ func NewRoute(cfg contracts.Config) (contracts.Route, error) {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	return &route{app: app, cfg: cfg, router: app}, nil
+	return &route{app: app, cfg: cfg, router: app, validator: validator}, nil
 }
 
 func (r *route) Run(addr ...string) error {
@@ -92,58 +93,49 @@ func (r *route) Shutdown() error {
 	return r.app.ShutdownWithContext(ctx)
 }
 
-func (r *route) Get(path string, handler any) contracts.Route {
-	r.addRoute("GET", path, handler)
+func (r *route) Get(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Get(path, r.wrap(h))
 	return r
 }
-func (r *route) Post(path string, handler any) contracts.Route {
-	r.addRoute("POST", path, handler)
+func (r *route) Post(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Post(path, r.wrap(h))
 	return r
 }
-func (r *route) Put(path string, handler any) contracts.Route {
-	r.addRoute("PUT", path, handler)
+func (r *route) Put(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Put(path, r.wrap(h))
 	return r
 }
-func (r *route) Delete(path string, handler any) contracts.Route {
-	r.addRoute("DELETE", path, handler)
+func (r *route) Delete(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Delete(path, r.wrap(h))
 	return r
 }
-func (r *route) Patch(path string, handler any) contracts.Route {
-	r.addRoute("PATCH", path, handler)
+func (r *route) Patch(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Patch(path, r.wrap(h))
 	return r
 }
-func (r *route) Head(path string, handler any) contracts.Route {
-	r.addRoute("HEAD", path, handler)
+func (r *route) Head(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Head(path, r.wrap(h))
 	return r
 }
-func (r *route) Options(path string, handler any) contracts.Route {
-	r.addRoute("OPTIONS", path, handler)
+func (r *route) Options(path string, h contracts.HandlerFunc) contracts.Route {
+	r.router.Options(path, r.wrap(h))
 	return r
 }
 
 func (r *route) Group(prefix string) contracts.Route {
-	return &route{
-		app:    r.app,
-		cfg:    r.cfg,
-		router: r.router.Group(prefix),
-	}
+	return &route{app: r.app, cfg: r.cfg, router: r.router.Group(prefix), validator: r.validator}
 }
 
-func (r *route) Use(middleware ...any) contracts.Route {
-	r.router.Use(middleware...)
+func (r *route) Use(middleware ...contracts.HandlerFunc) contracts.Route {
+	for _, m := range middleware {
+		r.router.Use(r.wrap(m))
+	}
 	return r
 }
 
-// FiberApp 返回底层 Fiber App 实例。
-func (r *route) FiberApp() *fiber.App {
-	return r.app
-}
-
-func (r *route) addRoute(method, path string, handler any) {
-	switch h := handler.(type) {
-	case func(*fiber.Ctx) error:
-		r.router.Add(method, path, h)
-	default:
-		panic(fmt.Sprintf("[GoFast] unsupported handler type: %T, path: %s %s", handler, method, path))
+// wrap 将 contracts.HandlerFunc 转为 Fiber handler —— 唯一知道 Fiber 的地方。
+func (r *route) wrap(h contracts.HandlerFunc) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		return h(newFiberContext(c, r.validator))
 	}
 }

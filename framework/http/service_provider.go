@@ -11,7 +11,8 @@ type ServiceProvider struct{}
 func (sp *ServiceProvider) Register(app foundation.Application) {
 	app.Singleton("route", func(app foundation.Application) (any, error) {
 		cfg := app.MustMake("config").(contracts.Config)
-		return NewRoute(cfg)
+		validator := app.MustMake("validator").(contracts.Validation)
+		return NewRoute(cfg, validator)
 	})
 }
 
