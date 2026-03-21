@@ -33,8 +33,6 @@ cd GoFast
 go run main.go
 ```
 
-访问 http://localhost:3000/health → `{"status":"ok"}`
-
 ---
 
 ## 📖 文档
