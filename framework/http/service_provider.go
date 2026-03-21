@@ -12,7 +12,8 @@ func (sp *ServiceProvider) Register(app foundation.Application) {
 	app.Singleton("route", func(app foundation.Application) (any, error) {
 		cfg := app.MustMake("config").(contracts.Config)
 		validator := app.MustMake("validator").(contracts.Validation)
-		return NewRoute(cfg, validator)
+		storage := app.MustMake("storage").(contracts.Storage)
+		return NewRoute(cfg, validator, storage)
 	})
 }
 

@@ -25,7 +25,7 @@ type HandlerFunc func(ctx contracts.Context) error
 | `ctx.Header("Authorization")` | 读取请求头 |
 | `ctx.IP()` | 客户端 IP |
 | `ctx.BodyRaw()` | 原始请求体字节 |
-| `ctx.Bind(&req)` | 解析 JSON/Form 体 + 自动验证 |
+| `ctx.Bind(&req)` | 解析所有来源 + 自动验证（见下文）|
 | `ctx.JSON(code, data)` | 发送 JSON 响应 |
 | `ctx.String(code, s)` | 发送纯文本响应 |
 | `ctx.Status(code)` | 设置状态码（链式） |
@@ -34,6 +34,58 @@ type HandlerFunc func(ctx contracts.Context) error
 | `ctx.WithValue("key", v)` | 向下游 Handler 传值 |
 | `ctx.Next()` | 调用下一个 Middleware |
 
+### ctx.Bind 多源解析
+
+`ctx.Bind(&req)` 会按顺序从三个来源填充 struct 字段，最后统一验证：
+
+| 优先级 | Tag | 数据来源 | 示例 |
+|--------|-----|---------|------|
+| 1 | `uri:"xxx"` | URL 路径参数 | `/users/:id` 中的 `id` |
+| 2 | `query:"xxx"` | Query String | `?page=1&size=20` |
+| 3 | `json:"xxx"` / `form:"xxx"` | 请求体（POST/PUT body） | `{"name":"Alice"}` |
+
+**一个 struct 可以混合多种 tag**，框架自动从各来源填充：
+
+```go
+// PUT /api/v1/users/:id
+type UpdateUserRequest struct {
+    ID    string `uri:"id"     binding:"required"`           // ← 来自 URL 路径
+    Name  string `json:"name"  binding:"omitempty,min=2"`    // ← 来自 JSON body
+    Email string `json:"email" binding:"omitempty,email"`    // ← 来自 JSON body
+}
+
+func (c UserController) Update(ctx contracts.Context) error {
+    var req UpdateUserRequest
+    if err := ctx.Bind(&req); err != nil {  // 一次调用填满所有字段并验证
+        return fail(ctx, http.StatusUnprocessableEntity, err.Error())
+    }
+    // req.ID    = "abc-123"   (from /users/abc-123)
+    // req.Name  = "Alice"     (from body)
+    // req.Email = ""          (omitempty，未传则跳过验证)
+    ...
+}
+```
+
+**GET 请求（纯 query 参数）**：
+
+```go
+// GET /api/v1/users?page=2&size=10&email=alice
+type ListUserRequest struct {
+    Page  int    `query:"page"  binding:"omitempty,gte=1"`
+    Size  int    `query:"size"  binding:"omitempty,gte=1,lte=100"`
+    Email string `query:"email" binding:"omitempty,email"`
+}
+
+func (c UserController) Index(ctx contracts.Context) error {
+    var req ListUserRequest
+    if err := ctx.Bind(&req); err != nil {
+        return fail(ctx, http.StatusUnprocessableEntity, err.Error())
+    }
+    // req.Page = 2, req.Size = 10, req.Email = "alice"
+    ...
+}
+```
+
 ---
 
 ## 二、目录结构
@@ -41,14 +93,18 @@ type HandlerFunc func(ctx contracts.Context) error
 ```
 app/
 ├── http/
-│   ├── controllers/
-│   │   ├── user_controller.go    # 用户控制器
-│   │   └── ...
-│   └── middleware/
-│       ├── auth.go               # 认证中间件
-│       └── ...
+│   ├── admin/
+│   │   ├── controllers/
+│   │   │   └── user_controller.go   # 后台管理：完整 CRUD
+│   │   └── middleware/
+│   │       └── auth.go              # 后台鉴权
+│   └── app/
+│       ├── controllers/
+│       │   └── user_controller.go   # 前台/用户端：个人中心、自服务
+│       └── middleware/
+│           └── auth.go              # 前台鉴权
 └── models/
-    └── user.go                   # 数据模型
+    └── user.go                      # 数据模型
 ```
 
 ---
@@ -86,10 +142,22 @@ facades.Orm().DB().AutoMigrate(&models.User{})
 
 ## 四、编写控制器
 
-### 4.1 基本结构
+### 4.1 控制器分层建议
+
+GoFast 推荐按业务入口分模块：
+
+- `app/http/admin/controllers/`：后台管理控制器，通常是完整 CRUD、列表筛选、批量操作
+- `app/http/app/controllers/`：前台/用户端控制器，通常是“当前用户自己的数据”
+
+例如同样是“用户”能力：
+
+- 后台：`/admin/api/v1/users` —— 管理任意用户
+- 前台：`/api/v1/user/profile` —— 只操作当前登录用户自己的资料
+
+### 4.2 后台控制器基本结构
 
 ```go
-// app/http/controllers/user_controller.go
+// app/http/admin/controllers/user_controller.go
 package controllers
 
 import (
@@ -102,7 +170,7 @@ import (
 type UserController struct{}
 ```
 
-### 4.2 请求体与验证规则
+### 4.3 请求体与验证规则
 
 使用 `binding` tag 同时定义 JSON 字段名和验证规则：
 
@@ -114,6 +182,7 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
+    ID    string `uri:"id"     binding:"required"`
     Name  string `json:"name"  binding:"omitempty,min=2,max=50"`
     Email string `json:"email" binding:"omitempty,email"`
 }
@@ -132,75 +201,88 @@ type UpdateUserRequest struct {
 | `len=N` | 固定长度 |
 | `oneof=a b c` | 枚举值 |
 
-### 4.3 统一响应结构
+### 4.4 统一响应结构
+
+GoFast 已在 `framework/http` 内置标准响应结构：
 
 ```go
-type apiResponse struct {
+type Response struct {
     Code    int    `json:"code"`
     Message string `json:"message"`
     Data    any    `json:"data,omitempty"`
 }
+```
 
-func ok(ctx contracts.Context, data any) error {
-    return ctx.JSON(http.StatusOK, apiResponse{Code: 0, Message: "ok", Data: data})
-}
+控制器无需再重复定义 `apiResponse` / `ok` / `fail`，直接使用：
 
-func created(ctx contracts.Context, data any) error {
-    return ctx.JSON(http.StatusCreated, apiResponse{Code: 0, Message: "ok", Data: data})
-}
-
-func fail(ctx contracts.Context, code int, msg string) error {
-    return ctx.JSON(code, apiResponse{Code: 1, Message: msg})
-}
+```go
+ctx.Response().Success(data)                          // HTTP 200, code=0
+ctx.Response().Created(data)                          // HTTP 201, code=0
+ctx.Response().Fail(http.StatusBadRequest, "参数错误") // 默认业务码 code=1
+ctx.Response().Unauthorized()                         // HTTP 401
+ctx.Response().Forbidden()                            // HTTP 403
+ctx.Response().NotFound("用户不存在")                 // HTTP 404
+ctx.Response().Validation(err)                        // HTTP 422
+ctx.Response().Paginate(list, total, page, size)      // 标准分页结构
+ctx.Response().Build(200, 10001, "自定义消息", data)   // 完全自定义
 ```
 
 ---
 
-## 五、完整 CRUD 示例
+## 五、后台管理控制器示例（Admin 模块）
 
-### 5.1 列表 GET /api/v1/users
+后台管理一般放在：`app/http/admin/controllers/`，路由前缀通常是 `/admin/api/v1/...`。
+
+### 5.1 列表 GET /admin/api/v1/users
 
 ```go
 func (c UserController) Index(ctx contracts.Context) error {
-    // 查询参数：分页
-    page  := ctx.Query("page", "1")
-    limit := 20
+    var req ListUserRequest
+    if err := ctx.Bind(&req); err != nil { // query tag 自动填充
+        return ctx.Response().Validation(err)
+    }
+    if req.Page == 0 { req.Page = 1 }
+    if req.Size == 0 { req.Size = 20 }
 
-    var users []models.User
-    result := facades.Orm().DB().
-        Order("created_at DESC").
-        Limit(limit).
-        Find(&users)
-
-    if result.Error != nil {
-        facades.Log().Errorf("list users: %v", result.Error)
-        return fail(ctx, http.StatusInternalServerError, "查询失败")
+    db := facades.Orm().DB().Model(&models.User{}).Order("created_at DESC")
+    if req.Email != "" {
+        db = db.Where("email LIKE ?", "%"+req.Email+"%")
     }
 
-    return ok(ctx, map[string]any{
-        "list":  users,
-        "total": result.RowsAffected,
-        "page":  page,
-    })
+    var total int64
+    db.Count(&total)
+
+    var users []models.User
+    err := db.Offset((req.Page-1)*req.Size).Limit(req.Size).Find(&users).Error
+
+    if err != nil {
+        facades.Log().Errorf("admin list users: %v", err)
+        return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
+    }
+
+    return ctx.Response().Paginate(users, total, req.Page, req.Size)
 }
 ```
 
-### 5.2 详情 GET /api/v1/users/:id
+### 5.2 详情 GET /admin/api/v1/users/:id
 
 ```go
 func (c UserController) Show(ctx contracts.Context) error {
-    id := ctx.Param("id")   // URL 路径参数
-
-    var user models.User
-    if err := facades.Orm().DB().First(&user, "id = ?", id).Error; err != nil {
-        return fail(ctx, http.StatusNotFound, "用户不存在")
+    var req UserIDRequest
+    if err := ctx.Bind(&req); err != nil { // uri tag 自动填充
+        return ctx.Response().Validation(err)
     }
 
-    return ok(ctx, user)
+    var user models.User
+    if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
+        return ctx.Response().NotFound("用户不存在")
+    }
+
+    return ctx.Response().Success(user)
 }
 ```
 
-### 5.3 创建 POST /api/v1/users
+### 5.3 创建 POST /admin/api/v1/users
 
 ```go
 func (c UserController) Store(ctx contracts.Context) error {
@@ -208,14 +290,14 @@ func (c UserController) Store(ctx contracts.Context) error {
 
     // Bind = JSON解析 + binding验证，一步完成
     if err := ctx.Bind(&req); err != nil {
-        return fail(ctx, http.StatusUnprocessableEntity, err.Error())
+        return ctx.Response().Validation(err)
     }
 
     // 业务唯一性校验
     var count int64
     facades.Orm().DB().Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
     if count > 0 {
-        return fail(ctx, http.StatusConflict, "邮箱已存在")
+        return ctx.Response().Fail(http.StatusConflict, "邮箱已存在")
     }
 
     user := models.User{
@@ -225,28 +307,26 @@ func (c UserController) Store(ctx contracts.Context) error {
     }
 
     if err := facades.Orm().DB().Create(&user).Error; err != nil {
-        facades.Log().Errorf("create user: %v", err)
-        return fail(ctx, http.StatusInternalServerError, "创建失败")
+        facades.Log().Errorf("admin create user: %v", err)
+        return ctx.Response().Fail(http.StatusInternalServerError, "创建失败")
     }
 
-    return created(ctx, user)
+    return ctx.Response().Created(user)
 }
 ```
 
-### 5.4 更新 PUT /api/v1/users/:id
+### 5.4 更新 PUT /admin/api/v1/users/:id
 
 ```go
 func (c UserController) Update(ctx contracts.Context) error {
-    id := ctx.Param("id")
-
-    var user models.User
-    if err := facades.Orm().DB().First(&user, "id = ?", id).Error; err != nil {
-        return fail(ctx, http.StatusNotFound, "用户不存在")
+    var req UpdateUserRequest
+    if err := ctx.Bind(&req); err != nil { // uri + json body 一次绑定
+        return ctx.Response().Validation(err)
     }
 
-    var req UpdateUserRequest
-    if err := ctx.Bind(&req); err != nil {
-        return fail(ctx, http.StatusUnprocessableEntity, err.Error())
+    var user models.User
+    if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
+        return ctx.Response().NotFound("用户不存在")
     }
 
     updates := map[string]any{}
@@ -255,30 +335,33 @@ func (c UserController) Update(ctx contracts.Context) error {
 
     if len(updates) > 0 {
         if err := facades.Orm().DB().Model(&user).Updates(updates).Error; err != nil {
-            return fail(ctx, http.StatusInternalServerError, "更新失败")
+            return ctx.Response().Fail(http.StatusInternalServerError, "更新失败")
         }
     }
 
-    return ok(ctx, user)
+    return ctx.Response().Success(user)
 }
 ```
 
-### 5.5 删除 DELETE /api/v1/users/:id
+### 5.5 删除 DELETE /admin/api/v1/users/:id
 
 ```go
 func (c UserController) Destroy(ctx contracts.Context) error {
-    id := ctx.Param("id")
+    var req UserIDRequest
+    if err := ctx.Bind(&req); err != nil {
+        return ctx.Response().Validation(err)
+    }
 
     var user models.User
-    if err := facades.Orm().DB().First(&user, "id = ?", id).Error; err != nil {
-        return fail(ctx, http.StatusNotFound, "用户不存在")
+    if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
+        return ctx.Response().NotFound("用户不存在")
     }
 
     if err := facades.Orm().DB().Delete(&user).Error; err != nil {
-        return fail(ctx, http.StatusInternalServerError, "删除失败")
+        return ctx.Response().Fail(http.StatusInternalServerError, "删除失败")
     }
 
-    return ok(ctx, nil)
+    return ctx.Response().Success(nil)
 }
 ```
 
@@ -286,34 +369,74 @@ func (c UserController) Destroy(ctx contracts.Context) error {
 
 ## 六、注册路由
 
-在 `routes/api.go` 中绑定控制器：
+GoFast 推荐拆分为三份路由文件：
+
+- `routes/app.go` —— 前台/用户端路由
+- `routes/admin.go` —— 后台管理路由
+- `routes/api.go` —— 统一入口，只负责调用两者
+
+### 6.1 后台路由 `routes/admin.go`
 
 ```go
-// routes/api.go
 package routes
 
 import (
-    "go-fast/app/http/controllers"
+    adminControllers "go-fast/app/http/admin/controllers"
+    adminMiddleware "go-fast/app/http/admin/middleware"
+    "go-fast/framework/facades"
+)
+
+func RegisterAdmin() {
+    user := adminControllers.UserController{}
+
+    admin := facades.Route().Group("/admin/api/v1")
+    admin.Use(adminMiddleware.AdminAuth)
+
+    admin.Get("/users", user.Index)
+    admin.Get("/users/:id", user.Show)
+    admin.Post("/users", user.Store)
+    admin.Put("/users/:id", user.Update)
+    admin.Delete("/users/:id", user.Destroy)
+}
+```
+
+### 6.2 前台路由 `routes/app.go`
+
+```go
+package routes
+
+import (
+    appControllers "go-fast/app/http/app/controllers"
+    appMiddleware "go-fast/app/http/app/middleware"
     "go-fast/framework/contracts"
     "go-fast/framework/facades"
 )
 
-func Register() {
+func RegisterApp() {
     r := facades.Route()
+    user := appControllers.UserController{}
 
-    // 简单闭包
+    // 公开接口
     r.Get("/api/ping", func(ctx contracts.Context) error {
         return ctx.JSON(200, map[string]string{"message": "pong"})
     })
 
-    // 控制器方法
-    user := controllers.UserController{}
-    v1 := r.Group("/api/v1")
-    v1.Get("/users",       user.Index)
-    v1.Get("/users/:id",   user.Show)
-    v1.Post("/users",      user.Store)
-    v1.Put("/users/:id",   user.Update)
-    v1.Delete("/users/:id", user.Destroy)
+    // 需登录接口
+    api := r.Group("/api/v1")
+    api.Use(appMiddleware.Auth)
+    api.Get("/user/profile", user.Profile)
+    api.Put("/user/profile", user.UpdateProfile)
+}
+```
+
+### 6.3 总入口 `routes/api.go`
+
+```go
+package routes
+
+func Register() {
+    RegisterApp()
+    RegisterAdmin()
 }
 ```
 
@@ -323,10 +446,10 @@ func Register() {
 
 中间件与控制器签名完全一致：`func(contracts.Context) error`，调用 `ctx.Next()` 继续执行后续 Handler。
 
-### 7.1 编写认证中间件
+### 7.1 前台认证中间件
 
 ```go
-// app/http/middleware/auth.go
+// app/http/app/middleware/auth.go
 package middleware
 
 import (
@@ -335,58 +458,69 @@ import (
     "go-fast/framework/contracts"
 )
 
-// Auth JWT 认证中间件。
+// Auth 前台用户鉴权中间件。
 func Auth(ctx contracts.Context) error {
     token := ctx.Header("Authorization")
     token = strings.TrimPrefix(token, "Bearer ")
 
     if token == "" {
-        return ctx.JSON(http.StatusUnauthorized, map[string]string{
-            "message": "未授权",
-        })
+        return ctx.Response().Unauthorized("请先登录")
     }
 
-    // 解析 JWT，获取用户 ID
-    userID, err := parseJWT(token)
-    if err != nil {
-        return ctx.JSON(http.StatusUnauthorized, map[string]string{
-            "message": "token 无效",
-        })
-    }
-
-    // 将用户 ID 存入上下文，供后续 Handler 读取
-    ctx.WithValue("user_id", userID)
+    // TODO: 验证 JWT，成功后将 user_id 写入上下文
+    // ctx.WithValue("user_id", userID)
 
     return ctx.Next() // 继续执行下一个 Handler
 }
 ```
 
-### 7.2 在路由组中使用中间件
+### 7.2 后台认证中间件
 
 ```go
-// routes/api.go
-import "go-fast/app/http/middleware"
+// app/http/admin/middleware/auth.go
+package middleware
 
-func Register() {
-    r := facades.Route()
+import (
+    "net/http"
+    "strings"
+    "go-fast/framework/contracts"
+)
 
-    // 公开路由（无需认证）
-    r.Post("/api/auth/login",  authController.Login)
-    r.Post("/api/auth/register", authController.Register)
+func AdminAuth(ctx contracts.Context) error {
+    token := strings.TrimPrefix(ctx.Header("Authorization"), "Bearer ")
+    if token == "" {
+        return ctx.Response().Unauthorized("未授权")
+    }
 
-    // 需要认证的路由组
-    api := r.Group("/api/v1")
-    api.Use(middleware.Auth)  // 对该组所有路由生效
-    api.Get("/users",     user.Index)
-    api.Get("/profile",   profileController.Show)
+    // TODO: 验证 admin token，并确认其角色为管理员
+    // if !isAdmin(adminID) { return ctx.Response().Forbidden("无权限访问后台") }
+    // ctx.WithValue("admin_id", adminID)
+
+    return ctx.Next()
 }
 ```
 
-### 7.3 在 Handler 中读取中间件传递的值
+### 7.3 在路由组中使用中间件
+
+```go
+func RegisterApp() {
+    api := facades.Route().Group("/api/v1")
+    api.Use(appMiddleware.Auth)
+    api.Get("/user/profile", user.Profile)
+}
+
+func RegisterAdmin() {
+    admin := facades.Route().Group("/admin/api/v1")
+    admin.Use(adminMiddleware.AdminAuth)
+    admin.Get("/users", user.Index)
+}
+```
+
+### 7.4 在 Handler 中读取中间件传递的值
 
 ```go
 func (c UserController) Profile(ctx contracts.Context) error {
-    userID := ctx.Value("user_id").(string)   // 由 Auth 中间件写入
+    userID := ctx.Value("user_id").(string)   // 由 appMiddleware.Auth 写入
 
     var user models.User
     facades.Orm().DB().First(&user, "id = ?", userID)
@@ -403,7 +537,7 @@ func (c UserController) Profile(ctx contracts.Context) error {
 func (c OrderController) Store(ctx contracts.Context) error {
     var req CreateOrderRequest
     if err := ctx.Bind(&req); err != nil {
-        return fail(ctx, http.StatusUnprocessableEntity, err.Error())
+        return ctx.Response().Fail(http.StatusUnprocessableEntity, err.Error())
     }
 
     var order models.Order
@@ -423,10 +557,10 @@ func (c OrderController) Store(ctx contracts.Context) error {
 
     if err != nil {
         facades.Log().Errorf("create order failed: %v", err)
-        return fail(ctx, http.StatusInternalServerError, "下单失败")
+        return ctx.Response().Fail(http.StatusInternalServerError, "下单失败")
     }
 
-    return created(ctx, order)
+    return ctx.Response().Created(order)
 }
 ```
 
@@ -446,13 +580,13 @@ func (c UserController) Store(ctx contracts.Context) error {
     var req CreateUserRequest
     if err := ctx.Bind(&req); err != nil {
         log.Warnf("validation failed: %v", err)
-        return fail(ctx, http.StatusUnprocessableEntity, err.Error())
+        return ctx.Response().Fail(http.StatusUnprocessableEntity, err.Error())
     }
 
     // ... 业务逻辑 ...
 
     log.WithField("user_email", req.Email).Info("user created")
-    return created(ctx, user)
+    return ctx.Response().Created(user)
 }
 ```
 

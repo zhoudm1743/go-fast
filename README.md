@@ -56,8 +56,12 @@ go run main.go
 GoFast/
 ├── app/                         # 业务代码（用户编写）
 │   ├── http/
-│   │   ├── controllers/         # 控制器
-│   │   └── middleware/          # 中间件
+│   │   ├── admin/
+│   │   │   ├── controllers/     # 后台管理控制器
+│   │   │   └── middleware/      # 后台鉴权中间件
+│   │   └── app/
+│   │       ├── controllers/     # 前台/用户端控制器
+│   │       └── middleware/      # 前台鉴权中间件
 │   ├── models/                  # 数据模型
 │   └── providers/               # 自定义 Provider
 ├── bootstrap/
@@ -67,7 +71,9 @@ GoFast/
 ├── database/
 │   └── migrations/              # 数据库迁移
 ├── routes/
-│   └── api.go                   # 路由注册
+│   ├── api.go                   # 路由统一入口
+│   ├── app.go                   # 前台路由注册
+│   └── admin.go                 # 后台路由注册
 ├── framework/                   # 框架核心（不建议修改）
 │   ├── foundation/              # IoC 容器 & Application
 │   ├── contracts/               # 服务接口定义

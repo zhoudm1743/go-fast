@@ -21,10 +21,11 @@ type route struct {
 	cfg       contracts.Config
 	router    fiber.Router
 	validator contracts.Validation
+	storage   contracts.Storage
 }
 
 // NewRoute 创建 HTTP 路由服务实例。
-func NewRoute(cfg contracts.Config, validator contracts.Validation) (contracts.Route, error) {
+func NewRoute(cfg contracts.Config, validator contracts.Validation, storage contracts.Storage) (contracts.Route, error) {
 	readTimeout := time.Duration(cfg.GetInt("server.read_timeout_sec", 30)) * time.Second
 	writeTimeout := time.Duration(cfg.GetInt("server.write_timeout_sec", 30)) * time.Second
 	idleTimeout := time.Duration(cfg.GetInt("server.idle_timeout_sec", 120)) * time.Second
@@ -73,7 +74,7 @@ func NewRoute(cfg contracts.Config, validator contracts.Validation) (contracts.R
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	return &route{app: app, cfg: cfg, router: app, validator: validator}, nil
+	return &route{app: app, cfg: cfg, router: app, validator: validator, storage: storage}, nil
 }
 
 func (r *route) Run(addr ...string) error {
@@ -123,7 +124,7 @@ func (r *route) Options(path string, h contracts.HandlerFunc) contracts.Route {
 }
 
 func (r *route) Group(prefix string) contracts.Route {
-	return &route{app: r.app, cfg: r.cfg, router: r.router.Group(prefix), validator: r.validator}
+	return &route{app: r.app, cfg: r.cfg, router: r.router.Group(prefix), validator: r.validator, storage: r.storage}
 }
 
 func (r *route) Use(middleware ...contracts.HandlerFunc) contracts.Route {
@@ -136,6 +137,6 @@ func (r *route) Use(middleware ...contracts.HandlerFunc) contracts.Route {
 // wrap 将 contracts.HandlerFunc 转为 Fiber handler —— 唯一知道 Fiber 的地方。
 func (r *route) wrap(h contracts.HandlerFunc) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return h(newFiberContext(c, r.validator))
+		return h(newFiberContext(c, r.validator, r.storage))
 	}
 }

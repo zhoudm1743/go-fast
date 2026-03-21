@@ -142,31 +142,74 @@ main.go
 
 ## 六、注册路由
 
-在 `routes/api.go` 中编写路由，`main.go` 会在启动后自动调用 `routes.Register()`：
+GoFast 推荐按模块拆分路由：
+
+- `routes/app.go` —— 前台 / 用户端路由
+- `routes/admin.go` —— 后台管理路由
+- `routes/api.go` —— 统一入口，仅负责调用 `RegisterApp()` / `RegisterAdmin()`
+
+### 前台路由示例 `routes/app.go`
 
 ```go
-// routes/api.go
 package routes
 
 import (
+    appControllers "go-fast/app/http/app/controllers"
+    appMiddleware "go-fast/app/http/app/middleware"
+    "go-fast/framework/contracts"
     "go-fast/framework/facades"
-
-    "github.com/gofiber/fiber/v2"
 )
 
-func Register() {
+func RegisterApp() {
     r := facades.Route()
+    user := appControllers.UserController{}
 
-    // GET /api/ping
-    r.Get("/api/ping", func(c *fiber.Ctx) error {
-        return c.JSON(fiber.Map{"message": "pong"})
+    // 公开接口（无需登录）
+    r.Get("/api/ping", func(ctx contracts.Context) error {
+        return ctx.JSON(200, map[string]string{"message": "pong"})
     })
 
-    // 路由组
+    // 需要登录的接口
     api := r.Group("/api/v1")
-    api.Get("/users", listUsersHandler)
-    api.Post("/users", createUserHandler)
-    api.Delete("/users/:id", deleteUserHandler)
+    api.Use(appMiddleware.Auth)
+    api.Get("/user/profile", user.Profile)
+    api.Put("/user/profile", user.UpdateProfile)
+}
+```
+
+### 后台路由示例 `routes/admin.go`
+
+```go
+package routes
+
+import (
+    adminControllers "go-fast/app/http/admin/controllers"
+    adminMiddleware "go-fast/app/http/admin/middleware"
+    "go-fast/framework/facades"
+)
+
+func RegisterAdmin() {
+    user := adminControllers.UserController{}
+
+    admin := facades.Route().Group("/admin/api/v1")
+    admin.Use(adminMiddleware.AdminAuth)
+
+    admin.Get("/users", user.Index)
+    admin.Get("/users/:id", user.Show)
+    admin.Post("/users", user.Store)
+    admin.Put("/users/:id", user.Update)
+    admin.Delete("/users/:id", user.Destroy)
+}
+```
+
+### 总入口 `routes/api.go`
+
+```go
+package routes
+
+func Register() {
+    RegisterApp()
+    RegisterAdmin()
 }
 ```
 
