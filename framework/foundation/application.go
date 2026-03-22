@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+
+	"go-fast/framework/contracts"
 )
 
 const Version = "0.1.0"
@@ -28,6 +30,23 @@ type Application interface {
 	Shutdown()
 	// OnShutdown 注册关闭回调。
 	OnShutdown(hook func())
+
+	// ── 类型化服务快捷访问 ────────────────────────────────────────
+	// 以下方法是对 MustMake + 类型断言的封装，专为插件开发者提供，
+	// 避免在 Boot 中反复写 app.MustMake("config").(contracts.Config)。
+
+	// Config 获取配置服务（等同于 MustMake("config").(contracts.Config)）。
+	Config() contracts.Config
+	// Log 获取日志服务（等同于 MustMake("log").(contracts.Log)）。
+	Log() contracts.Log
+	// Cache 获取缓存服务（等同于 MustMake("cache").(contracts.Cache)）。
+	Cache() contracts.Cache
+	// Orm 获取 ORM 数据库服务（等同于 MustMake("orm").(contracts.Orm)）。
+	Orm() contracts.Orm
+	// Route 获取 HTTP 路由服务（等同于 MustMake("route").(contracts.Route)）。
+	Route() contracts.Route
+	// Storage 获取文件存储服务（等同于 MustMake("storage").(contracts.Storage)）。
+	Storage() contracts.Storage
 }
 
 // deferredEntry 将一个 DeferredProvider 与 sync.Once 绑定，保证线程安全地只初始化一次。
@@ -100,10 +119,47 @@ func (a *application) Boot() {
 		p.Register(a)
 	}
 
+	// Phase 1.5: 将各 ConfigProvider 声明的默认值写入 Config 服务
+	// （仅在用户未配置该 key 时生效，不覆盖已有值）
+	var configProviders []ConfigProvider
+	for _, p := range immediate {
+		if cp, ok := p.(ConfigProvider); ok {
+			configProviders = append(configProviders, cp)
+		}
+	}
+	if len(configProviders) > 0 && a.Bound("config") {
+		cfg := a.MustMake("config").(contracts.Config)
+		for _, cp := range configProviders {
+			cfg.SetDefaults(cp.ConfigDefaults())
+		}
+	}
+
 	// Phase 2: Boot 所有即时 Provider
 	for _, p := range immediate {
 		if err := p.Boot(a); err != nil {
 			panic(fmt.Sprintf("[GoFast] boot provider failed: %v", err))
+		}
+	}
+
+	// Phase 3: 自动执行 Migrator（如果 orm 服务可用）
+	if a.Bound("orm") {
+		orm := a.MustMake("orm").(contracts.Orm)
+		for _, p := range immediate {
+			if m, ok := p.(Migrator); ok {
+				if err := m.Migrate(orm); err != nil {
+					panic(fmt.Sprintf("[GoFast] migrate failed: %v", err))
+				}
+			}
+		}
+	}
+
+	// Phase 4: 自动执行 RouteRegistrar（如果 route 服务可用）
+	if a.Bound("route") {
+		r := a.MustMake("route").(contracts.Route)
+		for _, p := range immediate {
+			if rr, ok := p.(RouteRegistrar); ok {
+				rr.RegisterRoutes(r)
+			}
 		}
 	}
 
@@ -199,4 +255,30 @@ func (a *application) Shutdown() {
 	for i := len(hooks) - 1; i >= 0; i-- {
 		hooks[i]()
 	}
+}
+
+// ── 类型化服务快捷访问 ────────────────────────────────────────────────
+
+func (a *application) Config() contracts.Config {
+	return a.MustMake("config").(contracts.Config)
+}
+
+func (a *application) Log() contracts.Log {
+	return a.MustMake("log").(contracts.Log)
+}
+
+func (a *application) Cache() contracts.Cache {
+	return a.MustMake("cache").(contracts.Cache)
+}
+
+func (a *application) Orm() contracts.Orm {
+	return a.MustMake("orm").(contracts.Orm)
+}
+
+func (a *application) Route() contracts.Route {
+	return a.MustMake("route").(contracts.Route)
+}
+
+func (a *application) Storage() contracts.Storage {
+	return a.MustMake("storage").(contracts.Storage)
 }

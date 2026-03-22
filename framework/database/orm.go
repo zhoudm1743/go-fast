@@ -74,6 +74,10 @@ func NewOrm(cfg contracts.Config, log contracts.Log) (contracts.Orm, error) {
 
 func (o *orm) DB() *gorm.DB { return o.db }
 
+func (o *orm) AutoMigrate(models ...any) error {
+	return o.db.AutoMigrate(models...)
+}
+
 func (o *orm) Ping() error {
 	sqlDB, err := o.db.DB()
 	if err != nil {

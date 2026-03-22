@@ -10,4 +10,7 @@ type Orm interface {
 	Ping() error
 	// Close 关闭数据库连接。
 	Close() error
+	// AutoMigrate 自动迁移数据库表结构，传入 GORM Model 指针列表。
+	// 插件可通过实现 foundation.Migrator 接口，让框架自动调用此方法完成表结构同步。
+	AutoMigrate(models ...any) error
 }
