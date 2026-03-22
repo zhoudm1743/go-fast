@@ -1,7 +1,10 @@
 # GoFast 控制器开发指南
 
-> 本文介绍如何在 GoFast 中编写控制器，涵盖：路由绑定、请求解析、表单验证、数据库操作、统一响应结构和中间件。
+> 本文介绍如何在 GoFast 中编写控制器，涵盖：控制器自注册、请求解析、表单验证、数据库操作、统一响应结构和中间件。
 > 所有控制器代码 **只依赖 `go-fast/framework/contracts` 和 `go-fast/framework/facades`**，不引入任何底层 HTTP 框架包。
+>
+> 控制器通过实现 `contracts.Controller` 接口在 `Boot()` 中声明自己的路由，路由文件只做编排。
+> 详见 [路由设计文档](route.md)。
 
 ---
 
@@ -54,7 +57,7 @@ type UpdateUserRequest struct {
     Email string `json:"email" binding:"omitempty,email"`    // ← 来自 JSON body
 }
 
-func (c UserController) Update(ctx contracts.Context) error {
+func (c *UserController) Update(ctx contracts.Context) error {
     var req UpdateUserRequest
     if err := ctx.Bind(&req); err != nil {  // 一次调用填满所有字段并验证
         return fail(ctx, http.StatusUnprocessableEntity, err.Error())
@@ -76,7 +79,7 @@ type ListUserRequest struct {
     Email string `query:"email" binding:"omitempty,email"`
 }
 
-func (c UserController) Index(ctx contracts.Context) error {
+func (c *UserController) Index(ctx contracts.Context) error {
     var req ListUserRequest
     if err := ctx.Bind(&req); err != nil {
         return fail(ctx, http.StatusUnprocessableEntity, err.Error())
@@ -156,6 +159,8 @@ GoFast 推荐按业务入口分模块：
 
 ### 4.2 后台控制器基本结构
 
+每个控制器实现 `contracts.Controller` 接口（`Boot` 方法），可选实现 `contracts.Prefixer`（`Prefix` 方法）声明路由前缀：
+
 ```go
 // app/http/admin/controllers/user_controller.go
 package controllers
@@ -168,6 +173,18 @@ import (
 )
 
 type UserController struct{}
+
+// Prefix 路由前缀（实现 contracts.Prefixer）。
+func (c *UserController) Prefix() string { return "/users" }
+
+// Boot 声明路由（实现 contracts.Controller）。
+func (c *UserController) Boot(r contracts.Route) {
+    r.Get("/", c.Index)          // GET    /users
+    r.Get("/:id", c.Show)       // GET    /users/:id
+    r.Post("/", c.Store)        // POST   /users
+    r.Put("/:id", c.Update)     // PUT    /users/:id
+    r.Delete("/:id", c.Destroy) // DELETE /users/:id
+}
 ```
 
 ### 4.3 请求体与验证规则
@@ -233,10 +250,10 @@ ctx.Response().Build(200, 10001, "自定义消息", data)   // 完全自定义
 
 后台管理一般放在：`app/http/admin/controllers/`，路由前缀通常是 `/admin/api/v1/...`。
 
-### 5.1 列表 GET /admin/api/v1/users
+### 5.1 列表 GET /users
 
 ```go
-func (c UserController) Index(ctx contracts.Context) error {
+func (c *UserController) Index(ctx contracts.Context) error {
     var req ListUserRequest
     if err := ctx.Bind(&req); err != nil { // query tag 自动填充
         return ctx.Response().Validation(err)
@@ -264,10 +281,10 @@ func (c UserController) Index(ctx contracts.Context) error {
 }
 ```
 
-### 5.2 详情 GET /admin/api/v1/users/:id
+### 5.2 详情 GET /users/:id
 
 ```go
-func (c UserController) Show(ctx contracts.Context) error {
+func (c *UserController) Show(ctx contracts.Context) error {
     var req UserIDRequest
     if err := ctx.Bind(&req); err != nil { // uri tag 自动填充
         return ctx.Response().Validation(err)
@@ -282,10 +299,10 @@ func (c UserController) Show(ctx contracts.Context) error {
 }
 ```
 
-### 5.3 创建 POST /admin/api/v1/users
+### 5.3 创建 POST /users
 
 ```go
-func (c UserController) Store(ctx contracts.Context) error {
+func (c *UserController) Store(ctx contracts.Context) error {
     var req CreateUserRequest
 
     // Bind = JSON解析 + binding验证，一步完成
@@ -315,10 +332,10 @@ func (c UserController) Store(ctx contracts.Context) error {
 }
 ```
 
-### 5.4 更新 PUT /admin/api/v1/users/:id
+### 5.4 更新 PUT /users/:id
 
 ```go
-func (c UserController) Update(ctx contracts.Context) error {
+func (c *UserController) Update(ctx contracts.Context) error {
     var req UpdateUserRequest
     if err := ctx.Bind(&req); err != nil { // uri + json body 一次绑定
         return ctx.Response().Validation(err)
@@ -343,10 +360,10 @@ func (c UserController) Update(ctx contracts.Context) error {
 }
 ```
 
-### 5.5 删除 DELETE /admin/api/v1/users/:id
+### 5.5 删除 DELETE /users/:id
 
 ```go
-func (c UserController) Destroy(ctx contracts.Context) error {
+func (c *UserController) Destroy(ctx contracts.Context) error {
     var req UserIDRequest
     if err := ctx.Bind(&req); err != nil {
         return ctx.Response().Validation(err)
@@ -369,6 +386,8 @@ func (c UserController) Destroy(ctx contracts.Context) error {
 
 ## 六、注册路由
 
+控制器通过 `Boot()` 声明自己的路由后，路由文件只需用 `Register()` 编排即可。
+
 GoFast 推荐拆分为三份路由文件：
 
 - `routes/app.go` —— 前台/用户端路由
@@ -383,20 +402,16 @@ package routes
 import (
     adminControllers "go-fast/app/http/admin/controllers"
     adminMiddleware "go-fast/app/http/admin/middleware"
+    "go-fast/framework/contracts"
     "go-fast/framework/facades"
 )
 
 func RegisterAdmin() {
-    user := adminControllers.UserController{}
-
-    admin := facades.Route().Group("/admin/api/v1")
-    admin.Use(adminMiddleware.AdminAuth)
-
-    admin.Get("/users", user.Index)
-    admin.Get("/users/:id", user.Show)
-    admin.Post("/users", user.Store)
-    admin.Put("/users/:id", user.Update)
-    admin.Delete("/users/:id", user.Destroy)
+    facades.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+        admin.Register(
+            &adminControllers.UserController{},
+        )
+    })
 }
 ```
 
@@ -414,7 +429,6 @@ import (
 
 func RegisterApp() {
     r := facades.Route()
-    user := appControllers.UserController{}
 
     // 公开接口
     r.Get("/api/ping", func(ctx contracts.Context) error {
@@ -422,10 +436,11 @@ func RegisterApp() {
     })
 
     // 需登录接口
-    api := r.Group("/api/v1")
-    api.Use(appMiddleware.Auth)
-    api.Get("/user/profile", user.Profile)
-    api.Put("/user/profile", user.UpdateProfile)
+    r.Group("/api/v1", appMiddleware.Auth, func(v1 contracts.Route) {
+        v1.Register(
+            &appControllers.UserController{},
+        )
+    })
 }
 ```
 
@@ -500,32 +515,47 @@ func AdminAuth(ctx contracts.Context) error {
 }
 ```
 
-### 7.3 在路由组中使用中间件
+### 7.3 中间件的三种使用方式
+
+**组级中间件** —— 写在路由文件的 Group 上，整组共享：
 
 ```go
-func RegisterApp() {
-    api := facades.Route().Group("/api/v1")
-    api.Use(appMiddleware.Auth)
-    api.Get("/user/profile", user.Profile)
-}
+facades.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+    admin.Register(&adminControllers.UserController{})
+})
+```
 
-func RegisterAdmin() {
-    admin := facades.Route().Group("/admin/api/v1")
-    admin.Use(adminMiddleware.AdminAuth)
-    admin.Get("/users", user.Index)
+**控制器级中间件** —— 实现 `contracts.Middlewarer` 接口，控制器独享：
+
+```go
+func (c *UserController) Middleware() []contracts.HandlerFunc {
+    return []contracts.HandlerFunc{middleware.Auth}
+}
+```
+
+**路由级中间件** —— 在 `Boot()` 里用 Group 包裹部分路由：
+
+```go
+func (c *AuthController) Boot(r contracts.Route) {
+    r.Post("/login", c.Login)       // 公开
+
+    r.Group("/", middleware.Auth, func(g contracts.Route) {
+        g.Get("/me", c.Me)          // 需要鉴权
+        g.Post("/logout", c.Logout) // 需要鉴权
+    })
 }
 ```
 
 ### 7.4 在 Handler 中读取中间件传递的值
 
 ```go
-func (c UserController) Profile(ctx contracts.Context) error {
+func (c *UserController) Profile(ctx contracts.Context) error {
     userID := ctx.Value("user_id").(string)   // 由 appMiddleware.Auth 写入
 
     var user models.User
     facades.Orm().DB().First(&user, "id = ?", userID)
 
-    return ok(ctx, user)
+    return ctx.Response().Success(user)
 }
 ```
 
@@ -569,7 +599,7 @@ func (c OrderController) Store(ctx contracts.Context) error {
 ## 九、日志记录
 
 ```go
-func (c UserController) Store(ctx contracts.Context) error {
+func (c *UserController) Store(ctx contracts.Context) error {
     // 结构化日志（带请求 IP）
     log := facades.Log().WithFields(map[string]any{
         "ip":     ctx.IP(),
@@ -594,6 +624,7 @@ func (c UserController) Store(ctx contracts.Context) error {
 
 ## 十、相关文档
 
+- [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [Facade 使用说明](facade.md) — Config / Log / Cache / Orm 详细 API
 - [编写自定义 Provider](service-provider.md) — 注册自定义服务
 - [快速开始](getting-started.md) — 项目初始化与启动

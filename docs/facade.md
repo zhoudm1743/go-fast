@@ -347,7 +347,7 @@ database:
 
 ## 七、facades.Route()
 
-返回 `contracts.Route`，基于 Fiber v2 实现，支持链式注册、路由组和中间件。
+返回 `contracts.Route`，基于 Fiber v2 实现，支持链式注册、路由组回调、中间件和控制器自注册。
 
 ### 接口
 
@@ -355,45 +355,85 @@ database:
 type Route interface {
     Run(addr ...string) error
     Shutdown() error
-    Get(path string, handler any) Route
-    Post(path string, handler any) Route
-    Put(path string, handler any) Route
-    Delete(path string, handler any) Route
-    Patch(path string, handler any) Route
-    Head(path string, handler any) Route
-    Options(path string, handler any) Route
-    Group(prefix string) Route
-    Use(middleware ...any) Route
+
+    Get(path string, handler HandlerFunc) Route
+    Post(path string, handler HandlerFunc) Route
+    Put(path string, handler HandlerFunc) Route
+    Delete(path string, handler HandlerFunc) Route
+    Patch(path string, handler HandlerFunc) Route
+    Head(path string, handler HandlerFunc) Route
+    Options(path string, handler HandlerFunc) Route
+
+    // Group 创建路由组。
+    // args 支持 HandlerFunc（中间件）和 func(Route)（回调），可任意组合。
+    Group(prefix string, args ...any) Route
+    Use(middleware ...HandlerFunc) Route
+
+    // Register 批量注册控制器（自动处理 Prefix / Middleware / Boot）。
+    Register(controllers ...Controller) Route
 }
 ```
 
-### 示例
+### 控制器注册（推荐方式）
+
+控制器实现 `contracts.Controller` 接口，通过 `Boot()` 声明自己的路由：
+
+```go
+type UserController struct{}
+
+func (c *UserController) Prefix() string { return "/users" }
+
+func (c *UserController) Boot(r contracts.Route) {
+    r.Get("/", c.Index)
+    r.Get("/:id", c.Show)
+    r.Post("/", c.Store)
+    r.Put("/:id", c.Update)
+    r.Delete("/:id", c.Destroy)
+}
+```
+
+路由文件只做编排：
 
 ```go
 r := facades.Route()
 
-// 单个路由
-r.Get("/api/ping", func(c *fiber.Ctx) error {
-    return c.JSON(fiber.Map{"message": "pong"})
+r.Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+    admin.Register(
+        &controllers.UserController{},
+        &controllers.PostController{},
+    )
+})
+```
+
+### Group 回调 + 行内中间件
+
+```go
+r := facades.Route()
+
+// 回调方式（推荐）
+r.Group("/api/v1", appMiddleware.Auth, func(v1 contracts.Route) {
+    v1.Register(&controllers.UserController{})
 })
 
-// 路由组
-api := r.Group("/api/v1")
-api.Get("/users", listUsersHandler)
-api.Post("/users", createUserHandler)
-api.Put("/users/:id", updateUserHandler)
-api.Delete("/users/:id", deleteUserHandler)
+// 多层嵌套
+r.Group("/api", func(api contracts.Route) {
+    api.Get("/ping", pingHandler)
 
-// 中间件
-api.Use(authMiddleware)
-api.Get("/profile", getProfileHandler)
+    api.Group("/v1", appMiddleware.Auth, func(v1 contracts.Route) {
+        v1.Register(&controllers.OrderController{})
+    })
+})
 
-// 嵌套组
-admin := api.Group("/admin")
-admin.Use(adminOnlyMiddleware)
-admin.Get("/dashboard", dashboardHandler)
+// 链式调用（仍支持）
+admin := r.Group("/admin")
+admin.Use(adminMiddleware.AdminAuth)
+admin.Get("/hello", helloHandler)
+```
 
-// 启动服务器
+### 启动服务器
+
+```go
+r := facades.Route()
 r.Run()                  // 使用配置中的 host:port
 r.Run(":8080")           // 指定地址
 ```
@@ -567,6 +607,7 @@ func Sms() contracts.Sms {
 
 ## 十一、相关文档
 
+- [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [容器 API](container.md) — 了解 Bind / Singleton / Make 等底层方法
 - [编写自定义 Provider](service-provider.md) — 将自定义服务注册到容器
 - [插件开发指南](plugins.md) — 开发可复用的第三方插件

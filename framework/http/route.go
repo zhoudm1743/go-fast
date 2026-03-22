@@ -123,13 +123,60 @@ func (r *route) Options(path string, h contracts.HandlerFunc) contracts.Route {
 	return r
 }
 
-func (r *route) Group(prefix string) contracts.Route {
-	return &route{app: r.app, cfg: r.cfg, router: r.router.Group(prefix), validator: r.validator, storage: r.storage}
+func (r *route) Group(prefix string, args ...any) contracts.Route {
+	group := &route{
+		app:       r.app,
+		cfg:       r.cfg,
+		router:    r.router.Group(prefix),
+		validator: r.validator,
+		storage:   r.storage,
+	}
+
+	var callback func(contracts.Route)
+
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case contracts.HandlerFunc:
+			group.Use(v)
+		case func(contracts.Route):
+			callback = v
+		}
+	}
+
+	if callback != nil {
+		callback(group)
+	}
+
+	return group
 }
 
 func (r *route) Use(middleware ...contracts.HandlerFunc) contracts.Route {
 	for _, m := range middleware {
 		r.router.Use(r.wrap(m))
+	}
+	return r
+}
+
+func (r *route) Register(controllers ...contracts.Controller) contracts.Route {
+	for _, c := range controllers {
+		var target contracts.Route = r
+
+		// 检测可选接口：Prefixer
+		if pc, ok := c.(contracts.Prefixer); ok {
+			if p := pc.Prefix(); p != "" {
+				target = target.Group(p)
+			}
+		}
+
+		// 检测可选接口：Middlewarer
+		if mc, ok := c.(contracts.Middlewarer); ok {
+			if m := mc.Middleware(); len(m) > 0 {
+				target.Use(m...)
+			}
+		}
+
+		// 调用控制器声明路由
+		c.Boot(target)
 	}
 	return r
 }

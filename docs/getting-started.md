@@ -142,11 +142,41 @@ main.go
 
 ## 六、注册路由
 
-GoFast 推荐按模块拆分路由：
+GoFast 采用**控制器自注册**模式：控制器在 `Boot()` 中声明路由，路由文件只做编排。
+
+路由文件按模块拆分：
 
 - `routes/app.go` —— 前台 / 用户端路由
 - `routes/admin.go` —— 后台管理路由
 - `routes/api.go` —— 统一入口，仅负责调用 `RegisterApp()` / `RegisterAdmin()`
+
+### 控制器示例
+
+控制器实现 `contracts.Controller` 接口，可选实现 `contracts.Prefixer` 声明前缀：
+
+```go
+// app/http/app/controllers/user_controller.go
+package controllers
+
+import "go-fast/framework/contracts"
+
+type UserController struct{}
+
+func (c *UserController) Prefix() string { return "/user" }
+
+func (c *UserController) Boot(r contracts.Route) {
+    r.Get("/profile", c.Profile)
+    r.Put("/profile", c.UpdateProfile)
+}
+
+func (c *UserController) Profile(ctx contracts.Context) error {
+    return ctx.Response().Success(map[string]string{"name": "Alice"})
+}
+
+func (c *UserController) UpdateProfile(ctx contracts.Context) error {
+    return ctx.Response().Success(nil)
+}
+```
 
 ### 前台路由示例 `routes/app.go`
 
@@ -162,7 +192,6 @@ import (
 
 func RegisterApp() {
     r := facades.Route()
-    user := appControllers.UserController{}
 
     // 公开接口（无需登录）
     r.Get("/api/ping", func(ctx contracts.Context) error {
@@ -170,10 +199,11 @@ func RegisterApp() {
     })
 
     // 需要登录的接口
-    api := r.Group("/api/v1")
-    api.Use(appMiddleware.Auth)
-    api.Get("/user/profile", user.Profile)
-    api.Put("/user/profile", user.UpdateProfile)
+    r.Group("/api/v1", appMiddleware.Auth, func(v1 contracts.Route) {
+        v1.Register(
+            &appControllers.UserController{},
+        )
+    })
 }
 ```
 
@@ -185,20 +215,16 @@ package routes
 import (
     adminControllers "go-fast/app/http/admin/controllers"
     adminMiddleware "go-fast/app/http/admin/middleware"
+    "go-fast/framework/contracts"
     "go-fast/framework/facades"
 )
 
 func RegisterAdmin() {
-    user := adminControllers.UserController{}
-
-    admin := facades.Route().Group("/admin/api/v1")
-    admin.Use(adminMiddleware.AdminAuth)
-
-    admin.Get("/users", user.Index)
-    admin.Get("/users/:id", user.Show)
-    admin.Post("/users", user.Store)
-    admin.Put("/users/:id", user.Update)
-    admin.Delete("/users/:id", user.Destroy)
+    facades.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+        admin.Register(
+            &adminControllers.UserController{},
+        )
+    })
 }
 ```
 
@@ -302,6 +328,7 @@ type Article struct {
 
 ## 十、下一步
 
+- [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [控制器开发指南](controller.md) — 控制器、验证、数据库、中间件完整示例
 - [容器 API](container.md) — 了解服务容器的完整接口
 - [Facade 使用说明](facade.md) — 每个 Facade 的详细用法

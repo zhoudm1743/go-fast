@@ -11,6 +11,18 @@ import (
 // UserController 后台用户管理控制器（完整 CRUD）。
 type UserController struct{}
 
+// Prefix 路由前缀（实现 contracts.Prefixer）。
+func (c *UserController) Prefix() string { return "/users" }
+
+// Boot 声明路由（实现 contracts.Controller）。
+func (c *UserController) Boot(r contracts.Route) {
+	r.Get("/", c.Index)         // GET    /users
+	r.Get("/:id", c.Show)       // GET    /users/:id
+	r.Post("/", c.Store)        // POST   /users
+	r.Put("/:id", c.Update)     // PUT    /users/:id
+	r.Delete("/:id", c.Destroy) // DELETE /users/:id
+}
+
 // ── 请求体 ───────────────────────────────────────────────────────────
 
 type ListUserRequest struct {
@@ -37,8 +49,8 @@ type UpdateUserRequest struct {
 
 // ── 控制器方法 ────────────────────────────────────────────────────────
 
-// Index GET /admin/api/v1/users?page=1&size=20&email=xxx
-func (c UserController) Index(ctx contracts.Context) error {
+// Index GET /users?page=1&size=20&email=xxx
+func (c *UserController) Index(ctx contracts.Context) error {
 	var req ListUserRequest
 	if err := ctx.Bind(&req); err != nil { // query tag 自动填充
 		return ctx.Response().Validation(err)
@@ -67,8 +79,8 @@ func (c UserController) Index(ctx contracts.Context) error {
 	return ctx.Response().Paginate(users, total, req.Page, req.Size)
 }
 
-// Show GET /admin/api/v1/users/:id
-func (c UserController) Show(ctx contracts.Context) error {
+// Show GET /users/:id
+func (c *UserController) Show(ctx contracts.Context) error {
 	var req UserIDRequest
 	if err := ctx.Bind(&req); err != nil { // uri tag 自动填充
 		return ctx.Response().Validation(err)
@@ -81,8 +93,8 @@ func (c UserController) Show(ctx contracts.Context) error {
 	return ctx.Response().Success(user)
 }
 
-// Store POST /admin/api/v1/users
-func (c UserController) Store(ctx contracts.Context) error {
+// Store POST /users
+func (c *UserController) Store(ctx contracts.Context) error {
 	var req CreateUserRequest
 	if err := ctx.Bind(&req); err != nil { // json body 自动填充
 		return ctx.Response().Validation(err)
@@ -102,8 +114,8 @@ func (c UserController) Store(ctx contracts.Context) error {
 	return ctx.Response().Created(user)
 }
 
-// Update PUT /admin/api/v1/users/:id  （uri + json body 混合绑定）
-func (c UserController) Update(ctx contracts.Context) error {
+// Update PUT /users/:id
+func (c *UserController) Update(ctx contracts.Context) error {
 	var req UpdateUserRequest
 	if err := ctx.Bind(&req); err != nil { // uri 填充 ID + json 填充 Name/Email
 		return ctx.Response().Validation(err)
@@ -130,8 +142,8 @@ func (c UserController) Update(ctx contracts.Context) error {
 	return ctx.Response().Success(user)
 }
 
-// Destroy DELETE /admin/api/v1/users/:id
-func (c UserController) Destroy(ctx contracts.Context) error {
+// Destroy DELETE /users/:id
+func (c *UserController) Destroy(ctx contracts.Context) error {
 	var req UserIDRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.Response().Validation(err)

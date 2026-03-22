@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"go-fast/app/http/admin/requests"
 	"net/http"
 
 	"go-fast/app/models"
@@ -12,18 +13,20 @@ import (
 // 用户只能查看/修改自己的信息，无法操作他人数据。
 type UserController struct{}
 
-// ── 请求体 ───────────────────────────────────────────────────────────
+// Prefix 路由前缀（实现 contracts.Prefixer）。
+func (c *UserController) Prefix() string { return "/user" }
 
-// UpdateProfileRequest 更新个人资料（仅修改自己）。
-type UpdateProfileRequest struct {
-	Name string `json:"name" binding:"omitempty,min=2,max=50"`
+// Boot 声明路由（实现 contracts.Controller）。
+func (c *UserController) Boot(r contracts.Route) {
+	r.Get("/profile", c.Profile)
+	r.Put("/profile", c.UpdateProfile)
 }
 
 // ── 控制器方法 ────────────────────────────────────────────────────────
 
-// Profile GET /api/v1/user/profile
+// Profile GET /user/profile
 // 读取当前登录用户的个人信息（user_id 由 Auth 中间件通过 ctx.WithValue 注入）。
-func (c UserController) Profile(ctx contracts.Context) error {
+func (c *UserController) Profile(ctx contracts.Context) error {
 	userID, ok2 := ctx.Value("user_id").(string)
 	if !ok2 || userID == "" {
 		return ctx.Response().Unauthorized("未登录")
@@ -36,15 +39,15 @@ func (c UserController) Profile(ctx contracts.Context) error {
 	return ctx.Response().Success(user)
 }
 
-// UpdateProfile PUT /api/v1/user/profile
+// UpdateProfile PUT /user/profile
 // 更新当前登录用户的个人资料。
-func (c UserController) UpdateProfile(ctx contracts.Context) error {
+func (c *UserController) UpdateProfile(ctx contracts.Context) error {
 	userID, ok2 := ctx.Value("user_id").(string)
 	if !ok2 || userID == "" {
 		return ctx.Response().Unauthorized("未登录")
 	}
 
-	var req UpdateProfileRequest
+	var req requests.UpdateProfileRequest
 	if err := ctx.Bind(&req); err != nil {
 		return ctx.Response().Validation(err)
 	}

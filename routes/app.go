@@ -10,7 +10,6 @@ import (
 // RegisterApp 注册前台路由，统一前缀 /api/v1。
 func RegisterApp() {
 	r := facades.Route()
-	user := appControllers.UserController{}
 
 	// 公开接口（无需登录）
 	r.Get("/api/ping", func(ctx contracts.Context) error {
@@ -18,9 +17,9 @@ func RegisterApp() {
 	})
 
 	// 需要登录的接口
-	api := r.Group("/api/v1")
-	api.Use(appMiddleware.Auth)
-
-	api.Get("/user/profile", user.Profile)
-	api.Put("/user/profile", user.UpdateProfile)
+	r.Group("/api/v1", appMiddleware.Auth, func(v1 contracts.Route) {
+		v1.Register(
+			&appControllers.UserController{},
+		)
+	})
 }
