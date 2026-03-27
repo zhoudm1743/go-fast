@@ -27,7 +27,7 @@
 ## 🚀 快速开始
 
 ```bash
-git clone https://gitee.com/your-org/GoFast.git
+git clone https://github.com/zhoudm1743/go-fast.git
 cd GoFast
 # 创建 config.yaml（参考 docs/getting-started.md）
 go run main.go

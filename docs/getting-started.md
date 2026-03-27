@@ -16,7 +16,7 @@
 ## 二、获取代码
 
 ```bash
-git clone https://gitee.com/your-org/GoFast.git
+git clone https://github.com/zhoudm1743/go-fast.git
 cd GoFast
 ```
 
