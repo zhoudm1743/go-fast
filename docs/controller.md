@@ -124,9 +124,9 @@ import "github.com/zhoudm1743/go-fast/framework/database"
 
 type User struct {
     database.Model                                      // ID + CreatedAt + UpdatedAt
-    Name     string `gormdriver:"size:100;not null"        json:"name"`
-    Email    string `gormdriver:"size:200;uniqueIndex;not null" json:"email"`
-    Password string `gormdriver:"size:255;not null"        json:"-"` // json:"-" 不序列化
+    Name     string `gorm:"size:100;not null"               json:"name"`
+    Email    string `gorm:"size:200;uniqueIndex;not null"    json:"email"`
+    Password string `gorm:"size:255;not null"               json:"-"` // json:"-" 不序列化
 }
 ```
 
@@ -135,10 +135,12 @@ type User struct {
 - `CreatedAt` — Unix 毫秒时间戳（自动填充）
 - `UpdatedAt` — Unix 毫秒时间戳（自动更新）
 
-**自动迁移**（建议放在 `bootstrap/app.go` 的 `Boot()` 之后或专用迁移脚本中）：
+**自动迁移**：在 `ServiceProvider` 中实现 `DBMigrator` 接口，框架启动后自动调用：
 
 ```go
-facades.Orm().DB().AutoMigrate(&models.User{})
+func (p *AppServiceProvider) MigrateDB(db contracts.DB) error {
+    return db.AutoMigrate(&models.User{})
+}
 ```
 
 ---
@@ -255,24 +257,22 @@ ctx.Response().Build(200, 10001, "自定义消息", data)   // 完全自定义
 ```go
 func (c *UserController) Index(ctx contracts.Context) error {
     var req ListUserRequest
-    if err := ctx.Bind(&req); err != nil { // query tag 自动填充
+    if err := ctx.Bind(&req); err != nil {
         return ctx.Response().Validation(err)
     }
     if req.Page == 0 { req.Page = 1 }
     if req.Size == 0 { req.Size = 20 }
 
-    db := facades.Orm().DB().Model(&models.User{}).Order("created_at DESC")
+    q := facades.DB().Query().Model(&models.User{}).Order("created_at DESC")
     if req.Email != "" {
-        db = db.Where("email LIKE ?", "%"+req.Email+"%")
+        q = q.Where("email LIKE ?", "%"+req.Email+"%")
     }
 
     var total int64
-    db.Count(&total)
+    q.Count(&total)
 
     var users []models.User
-    err := db.Offset((req.Page-1)*req.Size).Limit(req.Size).Find(&users).Error
-
-    if err != nil {
+    if err := q.Paginate(req.Page, req.Size).Find(&users); err != nil {
         facades.Log().Errorf("admin list users: %v", err)
         return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
     }
@@ -286,13 +286,16 @@ func (c *UserController) Index(ctx contracts.Context) error {
 ```go
 func (c *UserController) Show(ctx contracts.Context) error {
     var req UserIDRequest
-    if err := ctx.Bind(&req); err != nil { // uri tag 自动填充
+    if err := ctx.Bind(&req); err != nil {
         return ctx.Response().Validation(err)
     }
 
     var user models.User
-    if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
-        return ctx.Response().NotFound("用户不存在")
+    if err := facades.DB().Query().First(&user, "id = ?", req.ID); err != nil {
+        if errors.Is(err, contracts.ErrRecordNotFound) {
+            return ctx.Response().NotFound("用户不存在")
+        }
+        return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
     }
 
     return ctx.Response().Success(user)
@@ -304,15 +307,12 @@ func (c *UserController) Show(ctx contracts.Context) error {
 ```go
 func (c *UserController) Store(ctx contracts.Context) error {
     var req CreateUserRequest
-
-    // Bind = JSON解析 + binding验证，一步完成
     if err := ctx.Bind(&req); err != nil {
         return ctx.Response().Validation(err)
     }
 
-    // 业务唯一性校验
     var count int64
-    facades.Orm().DB().Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
+    facades.DB().Query().Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
     if count > 0 {
         return ctx.Response().Fail(http.StatusConflict, "邮箱已存在")
     }
@@ -320,10 +320,13 @@ func (c *UserController) Store(ctx contracts.Context) error {
     user := models.User{
         Name:     req.Name,
         Email:    req.Email,
-        Password: hashPassword(req.Password), // 生产环境必须哈希
+        Password: hashPassword(req.Password),
     }
 
-    if err := facades.Orm().DB().Create(&user).Error; err != nil {
+    if err := facades.DB().Query().Create(&user); err != nil {
+        if errors.Is(err, contracts.ErrDuplicatedKey) {
+            return ctx.Response().Fail(http.StatusConflict, "邮箱已存在")
+        }
         facades.Log().Errorf("admin create user: %v", err)
         return ctx.Response().Fail(http.StatusInternalServerError, "创建失败")
     }
@@ -337,13 +340,16 @@ func (c *UserController) Store(ctx contracts.Context) error {
 ```go
 func (c *UserController) Update(ctx contracts.Context) error {
     var req UpdateUserRequest
-    if err := ctx.Bind(&req); err != nil { // uri + json body 一次绑定
+    if err := ctx.Bind(&req); err != nil {
         return ctx.Response().Validation(err)
     }
 
     var user models.User
-    if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
-        return ctx.Response().NotFound("用户不存在")
+    if err := facades.DB().Query().First(&user, "id = ?", req.ID); err != nil {
+        if errors.Is(err, contracts.ErrRecordNotFound) {
+            return ctx.Response().NotFound("用户不存在")
+        }
+        return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
     }
 
     updates := map[string]any{}
@@ -351,7 +357,7 @@ func (c *UserController) Update(ctx contracts.Context) error {
     if req.Email != "" { updates["email"] = req.Email }
 
     if len(updates) > 0 {
-        if err := facades.Orm().DB().Model(&user).Updates(updates).Error; err != nil {
+        if err := facades.DB().Query().Model(&user).Updates(updates); err != nil {
             return ctx.Response().Fail(http.StatusInternalServerError, "更新失败")
         }
     }
@@ -370,11 +376,14 @@ func (c *UserController) Destroy(ctx contracts.Context) error {
     }
 
     var user models.User
-    if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
-        return ctx.Response().NotFound("用户不存在")
+    if err := facades.DB().Query().First(&user, "id = ?", req.ID); err != nil {
+        if errors.Is(err, contracts.ErrRecordNotFound) {
+            return ctx.Response().NotFound("用户不存在")
+        }
+        return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
     }
 
-    if err := facades.Orm().DB().Delete(&user).Error; err != nil {
+    if err := facades.DB().Query().Delete(&user); err != nil {
         return ctx.Response().Fail(http.StatusInternalServerError, "删除失败")
     }
 
@@ -553,7 +562,12 @@ func (c *UserController) Profile(ctx contracts.Context) error {
     userID := ctx.Value("user_id").(string)   // 由 appMiddleware.Auth 写入
 
     var user models.User
-    facades.Orm().DB().First(&user, "id = ?", userID)
+    if err := facades.DB().Query().First(&user, "id = ?", userID); err != nil {
+        if errors.Is(err, contracts.ErrRecordNotFound) {
+            return ctx.Response().NotFound("用户不存在")
+        }
+        return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
+    }
 
     return ctx.Response().Success(user)
 }
@@ -571,15 +585,15 @@ func (c OrderController) Store(ctx contracts.Context) error {
     }
 
     var order models.Order
-    err := facades.Orm().DB().Transaction(func(tx *gorm.DB) error {
+    err := facades.DB().Transaction(func(tx contracts.Query) error {
         order = models.Order{UserID: req.UserID, Amount: req.Amount}
-        if err := tx.Create(&order).Error; err != nil {
+        if err := tx.Create(&order); err != nil {
             return err
         }
         // 扣减库存
         if err := tx.Model(&models.Product{}).
             Where("id = ?", req.ProductID).
-            UpdateColumn("stock", gorm.Expr("stock - ?", 1)).Error; err != nil {
+            Update("stock", gorm.Expr("stock - ?", 1)); err != nil {
             return err
         }
         return nil
@@ -624,8 +638,9 @@ func (c *UserController) Store(ctx contracts.Context) error {
 
 ## 十、相关文档
 
+- [数据库文档](database/README.md) — 完整的数据库操作指南（查询、事务、分页、多连接等）
 - [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
-- [Facade 使用说明](facade.md) — Config / Log / Cache / Orm 详细 API
+- [Facade 使用说明](facade.md) — Config / Log / Cache / DB 详细 API
 - [编写自定义 Provider](service-provider.md) — 注册自定义服务
 - [快速开始](getting-started.md) — 项目初始化与启动
 

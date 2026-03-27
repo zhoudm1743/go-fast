@@ -35,6 +35,15 @@ type Application interface {
     IsBooted() bool
     Shutdown()
     OnShutdown(hook func())
+
+    // 类型化快捷方法（避免手写 MustMake + 类型断言）
+    Config() contracts.Config
+    Log() contracts.Log
+    Cache() contracts.Cache
+    DB() contracts.DB          // 推荐：新数据库管理器
+    Orm() contracts.Orm        // Deprecated：请使用 DB()
+    Route() contracts.Route
+    Storage() contracts.Storage
 }
 ```
 
@@ -199,7 +208,7 @@ app.Shutdown()
 
 | Provider | 关闭行为 |
 |----------|---------|
-| `database.ServiceProvider` | 关闭数据库连接 |
+| `database.ServiceProvider` | 关闭所有数据库连接（`db` + `orm`） |
 | `http.ServiceProvider` | 优雅关闭 HTTP 服务器 |
 | `cache.ServiceProvider` | 停止内存缓存 GC |
 
@@ -254,14 +263,15 @@ func main() {
 
 ## 九、内置服务 Key 一览
 
-| Key | 类型 | Provider |
-|-----|------|----------|
-| `app` | `foundation.Application` | 自动注册 |
-| `config` | `contracts.Config` | `config.ServiceProvider` |
-| `log` | `contracts.Log` | `log.ServiceProvider` |
-| `cache` | `contracts.Cache` | `cache.ServiceProvider` |
-| `orm` | `contracts.Orm` | `database.ServiceProvider` |
-| `storage` | `contracts.Storage` | `filesystem.ServiceProvider` |
-| `validator` | `contracts.Validation` | `validation.ServiceProvider` |
-| `route` | `contracts.Route` | `http.ServiceProvider` |
+| Key | 类型 | Provider | 说明 |
+|-----|------|----------|------|
+| `app` | `foundation.Application` | 自动注册 | — |
+| `config` | `contracts.Config` | `config.ServiceProvider` | — |
+| `log` | `contracts.Log` | `log.ServiceProvider` | — |
+| `cache` | `contracts.Cache` | `cache.ServiceProvider` | — |
+| `db` | `contracts.DB` | `database.ServiceProvider` | **推荐**，多连接管理器 |
+| `orm` | `contracts.Orm` | `database.ServiceProvider` | **Deprecated**，请迁移到 `db` |
+| `storage` | `contracts.StorageDriver` | `filesystem.ServiceProvider` | — |
+| `validator` | `contracts.Validation` | `validation.ServiceProvider` | — |
+| `route` | `contracts.Route` | `http.ServiceProvider` | — |
 

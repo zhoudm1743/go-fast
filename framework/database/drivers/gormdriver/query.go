@@ -5,7 +5,6 @@ import (
 	"database/sql"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/database"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -102,7 +101,7 @@ func (q *GormQuery) Take(dest any, conds ...any) error {
 }
 
 func (q *GormQuery) Create(value any) error {
-	if bc, ok := value.(database.BeforeCreator); ok {
+	if bc, ok := value.(contracts.BeforeCreator); ok {
 		if err := bc.BeforeCreate(q); err != nil {
 			return err
 		}
@@ -157,7 +156,7 @@ func (q *GormQuery) Rows() (contracts.Rows, error) {
 // ── 写操作 Result 变体 ──────────────────────────────────────────────
 
 func (q *GormQuery) CreateResult(value any) contracts.Result {
-	if bc, ok := value.(database.BeforeCreator); ok {
+	if bc, ok := value.(contracts.BeforeCreator); ok {
 		if err := bc.BeforeCreate(q); err != nil {
 			return contracts.Result{Error: err}
 		}

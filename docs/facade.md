@@ -13,7 +13,8 @@
 | `facades.Config()` | `contracts.Config` | `config` | 配置服务 |
 | `facades.Log()` | `contracts.Log` | `log` | 日志服务 |
 | `facades.Cache()` | `contracts.Cache` | `cache` | 缓存服务 |
-| `facades.Orm()` | `contracts.Orm` | `orm` | ORM 数据库服务 |
+| `facades.DB()` | `contracts.DB` | `db` | **数据库管理器（推荐）** |
+| `facades.Orm()` | `contracts.Orm` | `orm` | ~~ORM 服务（Deprecated，请迁移到 `DB()`）~~ |
 | `facades.Route()` | `contracts.Route` | `route` | HTTP 路由服务 |
 | `facades.Storage()` | `contracts.Storage` | `storage` | 文件存储服务 |
 | `facades.Validator()` | `contracts.Validation` | `validator` | 验证服务 |
@@ -266,82 +267,152 @@ memStore.Put("key", "value", time.Hour)
 
 ---
 
-## 六、facades.Orm()
+## 六、facades.DB()
 
-返回 `contracts.Orm`，基于 GORM 实现，支持 MySQL / PostgreSQL / SQLite / SQL Server。
+返回 `contracts.DB`，数据库管理器，支持多连接、链式查询、事务等完整功能。
+**这是推荐的数据库访问方式**，详细文档见 [数据库文档](./database/README.md)。
 
 ### 接口
 
 ```go
-type Orm interface {
-    DB() *gorm.DB
+type DB interface {
+    Query(ctx ...context.Context) Query    // 默认连接查询构建器
+    Connection(name string) Query          // 切换命名连接
+    Driver(name ...string) Driver          // 获取底层驱动
+    Transaction(fc func(tx Query) error, opts ...TxOption) error
+    AutoMigrate(models ...any) error
     Ping() error
     Close() error
 }
 ```
 
-### 示例
+### 基础 CRUD
 
 ```go
-orm := facades.Orm()
-db := orm.DB()
+db := facades.DB()
 
-// 自动迁移
-db.AutoMigrate(&User{})
+// 创建（UUID 自动生成）
+user := &models.User{Name: "Alice", Email: "alice@example.com"}
+if err := db.Query().Create(user); err != nil {
+    // 处理错误
+}
+fmt.Println(user.ID) // 018f3e2a-...
 
-// CRUD
-db.Create(&User{Name: "Alice", Email: "alice@example.com"})
+// 查询单条
+var user models.User
+err := db.Query().First(&user, "id = ?", id)
+if errors.Is(err, contracts.ErrRecordNotFound) {
+    // 未找到
+}
 
-var user User
-db.First(&user, "name = ?", "Alice")
-
-db.Model(&user).Update("name", "Bob")
-
-db.Delete(&user)
-
-// 复杂查询
-var users []User
-db.Where("created_at > ?", yesterday).
+// 列表查询
+var users []models.User
+db.Query().
+    Where("status = ?", 1).
     Order("created_at DESC").
-    Limit(10).
     Find(&users)
 
-// 事务
-db.Transaction(func(tx *gorm.DB) error {
-    if err := tx.Create(&order).Error; err != nil {
-        return err
-    }
-    if err := tx.Create(&payment).Error; err != nil {
-        return err
-    }
-    return nil
-})
+// 分页
+var total int64
+q := db.Query().Model(&models.User{}).Order("created_at DESC")
+q.Count(&total)
+q.Paginate(page, size).Find(&users)
 
-// 测试连接
-if err := orm.Ping(); err != nil {
-    log.Fatal("database unreachable")
-}
+// 更新
+db.Query().Model(&user).Updates(map[string]any{"name": "Bob"})
+
+// 删除
+db.Query().Delete(&user)
+```
+
+### 事务
+
+```go
+err := facades.DB().Transaction(func(tx contracts.Query) error {
+    if err := tx.Create(&order); err != nil {
+        return err // 自动回滚
+    }
+    if err := tx.Model(&wallet).Update("balance", gorm.Expr("balance - ?", amount)); err != nil {
+        return err // 自动回滚
+    }
+    return nil // 自动提交
+})
+```
+
+### 多连接
+
+```go
+// 默认连接（写库）
+facades.DB().Query().Create(&user)
+
+// 指定连接（读库）
+facades.DB().Connection("read_replica").Where("status = ?", 1).Find(&users)
 ```
 
 ### 配置项
 
 ```yaml
 database:
-  driver: sqlite          # sqlite / mysql / postgres / mssql
-  # SQLite
-  dsn: "gofast.db"
-  # MySQL
-  # host: 127.0.0.1
-  # port: 3306
-  # database: gofast
-  # username: root
-  # password: secret
-  # charset: utf8mb4
-  max_idle_conns: 10
-  max_open_conns: 100
-  conn_max_lifetime: 60   # 分钟
-  conn_max_idle_time: 30  # 分钟
+  default: main
+
+  connections:
+    main:
+      driver: gormdriver
+      engine: sqlite
+      database: database/gofast.db
+      max_idle_conns: 10
+      max_open_conns: 100
+      log_level: info
+      slow_threshold: 200    # ms
+
+    read_replica:
+      driver: gormdriver
+      engine: mysql
+      host: 10.0.0.2
+      port: 3306
+      username: reader
+      password: secret
+      database: myapp
 ```
+
+> 兼容旧的扁平化配置格式（`database.driver: sqlite`），自动适配，无需改动。
+
+> 完整文档：[数据库 · 快速入门](./database/getting-started.md) · [连接数据库](./database/connecting.md) · [查询](./database/query.md)
+
+---
+
+## 六（旧）、facades.Orm() <sup>Deprecated</sup>
+
+> ⚠️ **已废弃**，将在下一主版本移除。请迁移到 `facades.DB()`。
+
+返回 `contracts.Orm`，直接暴露 `*gorm.DB`，与 GORM 强耦合。
+
+```go
+// ❌ 旧写法（不推荐）
+db := facades.Orm().DB()
+db.Where("status = ?", 1).Find(&users)
+db.First(&user, "id = ?", id)
+db.Create(&user)
+db.Delete(&user)
+
+// ✅ 新写法（推荐）
+facades.DB().Query().Where("status = ?", 1).Find(&users)
+facades.DB().Query().First(&user, "id = ?", id)
+facades.DB().Query().Create(&user)
+facades.DB().Query().Delete(&user)
+```
+
+迁移对照表：
+
+| 旧写法 | 新写法 |
+|--------|--------|
+| `facades.Orm().DB().Find(&list)` | `facades.DB().Query().Find(&list)` |
+| `...DB().First(&u, id).Error` | `...Query().First(&u, id)` |
+| `...DB().Create(&u).Error` | `...Query().Create(&u)` |
+| `...DB().Model(&u).Updates(m).Error` | `...Query().Model(&u).Updates(m)` |
+| `...DB().Delete(&u).Error` | `...Query().Delete(&u)` |
+| `.Offset((p-1)*s).Limit(s)` | `.Paginate(p, s)` |
+| `DB().Transaction(func(tx *gorm.DB)` | `Query().Transaction(func(tx contracts.Query)` |
 
 ---
 
@@ -607,6 +678,7 @@ func Sms() contracts.Sms {
 
 ## 十一、相关文档
 
+- [数据库文档](database/README.md) — 完整的数据库操作指南（查询、事务、分页、多连接等）
 - [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [容器 API](container.md) — 了解 Bind / Singleton / Make 等底层方法
 - [编写自定义 Provider](service-provider.md) — 将自定义服务注册到容器

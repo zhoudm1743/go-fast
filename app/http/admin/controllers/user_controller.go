@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/zhoudm1743/go-fast/app/models"
@@ -52,7 +53,7 @@ type UpdateUserRequest struct {
 // Index GET /users?page=1&size=20&email=xxx
 func (c *UserController) Index(ctx contracts.Context) error {
 	var req ListUserRequest
-	if err := ctx.Bind(&req); err != nil { // query tag 自动填充
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.Response().Validation(err)
 	}
 	if req.Page == 0 {
@@ -62,16 +63,16 @@ func (c *UserController) Index(ctx contracts.Context) error {
 		req.Size = 20
 	}
 
-	db := facades.Orm().DB().Model(&models.User{}).Order("created_at DESC")
+	q := facades.DB().Query().Model(&models.User{}).Order("created_at DESC")
 	if req.Email != "" {
-		db = db.Where("email LIKE ?", "%"+req.Email+"%")
+		q = q.Where("email LIKE ?", "%"+req.Email+"%")
 	}
 
 	var total int64
-	db.Count(&total)
+	q.Count(&total)
 
 	var users []models.User
-	if err := db.Offset((req.Page - 1) * req.Size).Limit(req.Size).Find(&users).Error; err != nil {
+	if err := q.Paginate(req.Page, req.Size).Find(&users); err != nil {
 		facades.Log().Errorf("admin list users: %v", err)
 		return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
 	}
@@ -82,13 +83,16 @@ func (c *UserController) Index(ctx contracts.Context) error {
 // Show GET /users/:id
 func (c *UserController) Show(ctx contracts.Context) error {
 	var req UserIDRequest
-	if err := ctx.Bind(&req); err != nil { // uri tag 自动填充
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.Response().Validation(err)
 	}
 
 	var user models.User
-	if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
-		return ctx.Response().NotFound("用户不存在")
+	if err := facades.DB().Query().First(&user, "id = ?", req.ID); err != nil {
+		if errors.Is(err, contracts.ErrRecordNotFound) {
+			return ctx.Response().NotFound("用户不存在")
+		}
+		return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
 	}
 	return ctx.Response().Success(user)
 }
@@ -96,18 +100,18 @@ func (c *UserController) Show(ctx contracts.Context) error {
 // Store POST /users
 func (c *UserController) Store(ctx contracts.Context) error {
 	var req CreateUserRequest
-	if err := ctx.Bind(&req); err != nil { // json body 自动填充
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.Response().Validation(err)
 	}
 
 	var count int64
-	facades.Orm().DB().Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
+	facades.DB().Query().Model(&models.User{}).Where("email = ?", req.Email).Count(&count)
 	if count > 0 {
 		return ctx.Response().Fail(http.StatusConflict, "邮箱已存在")
 	}
 
 	user := models.User{Name: req.Name, Email: req.Email, Password: req.Password}
-	if err := facades.Orm().DB().Create(&user).Error; err != nil {
+	if err := facades.DB().Query().Create(&user); err != nil {
 		facades.Log().Errorf("admin create user: %v", err)
 		return ctx.Response().Fail(http.StatusInternalServerError, "创建失败")
 	}
@@ -117,13 +121,16 @@ func (c *UserController) Store(ctx contracts.Context) error {
 // Update PUT /users/:id
 func (c *UserController) Update(ctx contracts.Context) error {
 	var req UpdateUserRequest
-	if err := ctx.Bind(&req); err != nil { // uri 填充 ID + json 填充 Name/Email
+	if err := ctx.Bind(&req); err != nil {
 		return ctx.Response().Validation(err)
 	}
 
 	var user models.User
-	if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
-		return ctx.Response().NotFound("用户不存在")
+	if err := facades.DB().Query().First(&user, "id = ?", req.ID); err != nil {
+		if errors.Is(err, contracts.ErrRecordNotFound) {
+			return ctx.Response().NotFound("用户不存在")
+		}
+		return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
 	}
 
 	updates := map[string]any{}
@@ -135,7 +142,7 @@ func (c *UserController) Update(ctx contracts.Context) error {
 	}
 
 	if len(updates) > 0 {
-		if err := facades.Orm().DB().Model(&user).Updates(updates).Error; err != nil {
+		if err := facades.DB().Query().Model(&user).Updates(updates); err != nil {
 			return ctx.Response().Fail(http.StatusInternalServerError, "更新失败")
 		}
 	}
@@ -150,11 +157,14 @@ func (c *UserController) Destroy(ctx contracts.Context) error {
 	}
 
 	var user models.User
-	if err := facades.Orm().DB().First(&user, "id = ?", req.ID).Error; err != nil {
-		return ctx.Response().NotFound("用户不存在")
+	if err := facades.DB().Query().First(&user, "id = ?", req.ID); err != nil {
+		if errors.Is(err, contracts.ErrRecordNotFound) {
+			return ctx.Response().NotFound("用户不存在")
+		}
+		return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
 	}
 
-	if err := facades.Orm().DB().Delete(&user).Error; err != nil {
+	if err := facades.DB().Query().Delete(&user); err != nil {
 		return ctx.Response().Fail(http.StatusInternalServerError, "删除失败")
 	}
 	return ctx.Response().Success(nil)

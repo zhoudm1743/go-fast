@@ -2,11 +2,11 @@ package contracts
 
 import "context"
 
-// Storage 文件存储服务契约，嵌入 Driver 接口并支持多磁盘切换。
+// Storage 文件存储服务契约，嵌入 StorageDriver 接口并支持多磁盘切换。
 type Storage interface {
-	Driver
+	StorageDriver
 	// Disk 获取指定磁盘的驱动实例。
-	Disk(disk string) Driver
+	Disk(disk string) StorageDriver
 }
 
 // Driver 文件系统驱动契约。

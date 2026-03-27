@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/database"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
-	gormLogger "gormdriver.io/gormdriver/logger"
+	gormLogger "gorm.io/gorm/logger"
 )
 
 // GormDriver 实现 contracts.Driver
@@ -24,7 +23,7 @@ type GormDriver struct {
 var _ contracts.Driver = (*GormDriver)(nil)
 
 // NewGormDriver 根据连接配置创建 GORM 驱动实例。
-func NewGormDriver(cfg database.ConnectionConfig, log contracts.Log) (*GormDriver, error) {
+func NewGormDriver(cfg contracts.ConnectionConfig, log contracts.Log) (*GormDriver, error) {
 	cfg.ApplyDefaults()
 
 	dsn := cfg.BuildDSN()
@@ -63,12 +62,6 @@ func NewGormDriver(cfg database.ConnectionConfig, log contracts.Log) (*GormDrive
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Minute)
 	sqlDB.SetConnMaxIdleTime(time.Duration(cfg.ConnMaxIdleTime) * time.Minute)
-
-	// 表前缀
-	if cfg.TablePrefix != "" {
-		db = db.Session(&gorm.Session{})
-		// GORM 的 NamingStrategy 在 Config 中设置
-	}
 
 	return &GormDriver{db: db}, nil
 }
@@ -118,26 +111,26 @@ func (w *logWriter) Printf(format string, args ...interface{}) {
 	w.log.Infof(format, args...)
 }
 
-func buildGormConfig(cfg database.ConnectionConfig, log contracts.Log) *gorm.Config {
-	var gormLogLevel gormLogger.LogLevel
+func buildGormConfig(cfg contracts.ConnectionConfig, log contracts.Log) *gorm.Config {
+	var level gormLogger.LogLevel
 	switch cfg.LogLevel {
 	case "error":
-		gormLogLevel = gormLogger.Error
+		level = gormLogger.Error
 	case "warn":
-		gormLogLevel = gormLogger.Warn
+		level = gormLogger.Warn
 	case "info":
-		gormLogLevel = gormLogger.Info
+		level = gormLogger.Info
 	case "silent":
-		gormLogLevel = gormLogger.Silent
+		level = gormLogger.Silent
 	default:
-		gormLogLevel = gormLogger.Info
+		level = gormLogger.Info
 	}
 
 	customLogger := gormLogger.New(
 		&logWriter{log: log},
 		gormLogger.Config{
 			SlowThreshold:             time.Duration(cfg.SlowThreshold) * time.Millisecond,
-			LogLevel:                  gormLogLevel,
+			LogLevel:                  level,
 			IgnoreRecordNotFoundError: true,
 			Colorful:                  true,
 		},

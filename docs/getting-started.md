@@ -133,7 +133,7 @@ main.go
 | 1 | `config.ServiceProvider` | `config` | 读取配置文件 |
 | 2 | `log.ServiceProvider` | `log` | 初始化日志（依赖 config） |
 | 3 | `cache.ServiceProvider` | `cache` | 初始化缓存（依赖 config） |
-| 4 | `database.ServiceProvider` | `orm` | 连接数据库（依赖 config + log） |
+| 4 | `database.ServiceProvider` | `db` / ~~`orm`~~ | 连接数据库（依赖 config + log）；`orm` 已 Deprecated |
 | 5 | `filesystem.ServiceProvider` | `storage` | 文件系统（依赖 config） |
 | 6 | `validation.ServiceProvider` | `validator` | 验证器 |
 | 7 | `http.ServiceProvider` | `route` | HTTP 路由（依赖 config） |
@@ -263,10 +263,12 @@ port := facades.Config().GetInt("server.port", 3000)
 facades.Log().Info("server started")
 facades.Log().WithField("user_id", 1).Info("user login")
 
-// 数据库
-db := facades.Orm().DB()
-db.AutoMigrate(&User{})
-db.Create(&User{Name: "Alice"})
+// 数据库（推荐）
+q := facades.DB().Query()
+q.Create(&User{Name: "Alice"})
+
+var users []User
+facades.DB().Query().Where("status = ?", 1).Order("created_at DESC").Find(&users)
 
 // 缓存
 facades.Cache().Put("key", "value", 10*time.Minute)
@@ -294,15 +296,15 @@ import "github.com/zhoudm1743/go-fast/framework/database"
 // User 业务模型，嵌入 database.Model 即自带 UUID v7 主键。
 type User struct {
     database.Model
-    Name  string `gormdriver:"size:100" json:"name"`
-    Email string `gormdriver:"size:200;uniqueIndex" json:"email"`
+    Name  string `gorm:"size:100" json:"name"`
+    Email string `gorm:"size:200;uniqueIndex" json:"email"`
 }
 
 // 带软删除
 type Article struct {
     database.ModelWithSoftDelete
-    Title   string `gormdriver:"size:255" json:"title"`
-    Content string `gormdriver:"type:text" json:"content"`
+    Title   string `gorm:"size:255" json:"title"`
+    Content string `gorm:"type:text" json:"content"`
 }
 ```
 
@@ -310,6 +312,15 @@ type Article struct {
 - `ID` — UUID v7 字符串主键（36 位，自动生成）
 - `CreatedAt` — Unix 时间戳（自动设置）
 - `UpdatedAt` — Unix 时间戳（自动更新）
+
+**自动迁移**：实现 `DBMigrator` 接口，框架启动后自动调用：
+
+```go
+// 在 ServiceProvider 中实现
+func (p *AppProvider) MigrateDB(db contracts.DB) error {
+    return db.AutoMigrate(&models.User{}, &models.Article{})
+}
+```
 
 ---
 
@@ -328,6 +339,7 @@ type Article struct {
 
 ## 十、下一步
 
+- [数据库文档](database/README.md) — 完整的数据库操作指南（查询、事务、分页、多连接等）
 - [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [控制器开发指南](controller.md) — 控制器、验证、数据库、中间件完整示例
 - [容器 API](container.md) — 了解服务容器的完整接口

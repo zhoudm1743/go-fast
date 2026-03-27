@@ -326,17 +326,24 @@ func (sp *ServiceProvider) Boot(app foundation.Application) error {
 
 ```go
 func (sp *ServiceProvider) Register(app foundation.Application) {
+    // 注册新的 "db" 服务（推荐）
+    app.Singleton("db", func(app foundation.Application) (any, error) {
+        cfg := app.MustMake("config").(contracts.Config)
+        log := app.MustMake("log").(contracts.Log)
+        return database.NewDBManager(cfg, log)
+    })
+    // 保留旧的 "orm" 服务以向后兼容（Deprecated）
     app.Singleton("orm", func(app foundation.Application) (any, error) {
         cfg := app.MustMake("config").(contracts.Config)
         log := app.MustMake("log").(contracts.Log)
-        return NewOrm(cfg, log)
+        return database.NewOrm(cfg, log)
     })
 }
 
 func (sp *ServiceProvider) Boot(app foundation.Application) error {
     app.OnShutdown(func() {
-        if o, err := app.Make("orm"); err == nil {
-            if closer, ok := o.(contracts.Orm); ok {
+        if db, err := app.Make("db"); err == nil {
+            if closer, ok := db.(contracts.DB); ok {
                 _ = closer.Close()
             }
         }
@@ -361,6 +368,7 @@ func (sp *ServiceProvider) Boot(app foundation.Application) error {
 
 ## 九、相关文档
 
+- [数据库文档](database/README.md) — 完整的数据库操作指南（`DBMigrator` 接口、多连接等）
 - [容器 API](container.md) — Bind / Singleton / Make 等方法详解
 - [Facade 使用说明](facade.md) — 为自定义服务添加 Facade
 - [插件开发指南](plugins.md) — 将 Provider 打包为可复用插件

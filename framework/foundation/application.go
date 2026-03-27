@@ -42,7 +42,10 @@ type Application interface {
 	// Cache 获取缓存服务（等同于 MustMake("cache").(contracts.Cache)）。
 	Cache() contracts.Cache
 	// Orm 获取 ORM 数据库服务（等同于 MustMake("orm").(contracts.Orm)）。
+	// Deprecated: 请使用 DB()，此方法将在下一主版本移除。
 	Orm() contracts.Orm
+	// DB 获取数据库管理器（等同于 MustMake("db").(contracts.DB)）。
+	DB() contracts.DB
 	// Route 获取 HTTP 路由服务（等同于 MustMake("route").(contracts.Route)）。
 	Route() contracts.Route
 	// Storage 获取文件存储服务（等同于 MustMake("storage").(contracts.Storage)）。
@@ -148,6 +151,18 @@ func (a *application) Boot() {
 			if m, ok := p.(Migrator); ok {
 				if err := m.Migrate(orm); err != nil {
 					panic(fmt.Sprintf("[GoFast] migrate failed: %v", err))
+				}
+			}
+		}
+	}
+
+	// Phase 3b: 自动执行 DBMigrator（如果 db 服务可用）
+	if a.Bound("db") {
+		db := a.MustMake("db").(contracts.DB)
+		for _, p := range immediate {
+			if m, ok := p.(DBMigrator); ok {
+				if err := m.MigrateDB(db); err != nil {
+					panic(fmt.Sprintf("[GoFast] migrate (db) failed: %v", err))
 				}
 			}
 		}
@@ -273,6 +288,10 @@ func (a *application) Cache() contracts.Cache {
 
 func (a *application) Orm() contracts.Orm {
 	return a.MustMake("orm").(contracts.Orm)
+}
+
+func (a *application) DB() contracts.DB {
+	return a.MustMake("db").(contracts.DB)
 }
 
 func (a *application) Route() contracts.Route {

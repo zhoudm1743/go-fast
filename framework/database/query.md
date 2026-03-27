@@ -540,30 +540,37 @@ UUID 自动赋值逻辑从 GORM callback 抽取到 `manager.go` 的通用 `Befor
 - [x] **T1** `framework/contracts/query.go` — 定义 `Query`、`Row`、`Rows`、`TxOption`、`Driver`、`DB` 接口
 - [x] **T2** `framework/contracts/query.go` — 定义 `Result` 结构体、`LockMode` 常量、`StandardTxOptions`、预定义快捷选项
 - [x] **T3** `framework/contracts/query.go` — 定义框架级 Sentinel Errors（`ErrRecordNotFound` 等）
+- [x] **T-extra** `framework/contracts/database.go` — 新增：`ConnectionConfig`（含 `BuildDSN`/`ApplyDefaults`）及模型 Hook 接口（`BeforeCreator` 等），破除 `database` ↔ `gormdriver` 循环依赖
 
 ### Phase 2：配置与模型
-- [x] **T4** `framework/database/config.go` — 新增 `ConnectionConfig` 结构体及 `BuildDSN` 方法
-- [x] **T5** `framework/database/model.go` — 补充多 ORM struct tag；定义 Hook 接口；`BeforeCreate` UUID 逻辑迁移到框架层
+- [x] **T4** `framework/database/config.go` — `ConnectionConfig` 改为类型别名（实体移至 `contracts/database.go`，破除循环依赖）
+- [x] **T5** `framework/database/model.go` — 补充多 ORM struct tag（`gorm`/`xorm`）；Hook 接口别名；`BeforeCreate` UUID 逻辑
 
 ### Phase 3：GORM 驱动实现
-- [x] **T6** `framework/database/drivers/gorm/errors.go` — 实现 `wrapError`，映射 GORM 错误到框架 Sentinel
-- [x] **T7** `framework/database/drivers/gorm/query.go` — 实现 `GormQuery`（全部链式方法 + 终结方法 + 软删除 + 高级查询 + Lock）
-- [x] **T8** `framework/database/drivers/gorm/driver.go` — 实现 `GormDriver`（适配 `contracts.Driver`）
+- [x] **T6** `framework/database/drivers/gormdriver/errors.go` — 实现 `wrapError`，映射 GORM 错误到框架 Sentinel
+- [x] **T7** `framework/database/drivers/gormdriver/query.go` — 实现 `GormQuery`（全部链式方法 + 终结方法 + 软删除 + 高级查询 + Lock）
+- [x] **T8** `framework/database/drivers/gormdriver/driver.go` — 实现 `GormDriver`；修复错误导入；改用 `contracts.ConnectionConfig` 破除循环依赖
 
 ### Phase 4：管理器与服务注册
-- [x] **T9** `framework/database/manager.go` — 实现 `dbManager`（多连接懒加载、驱动注册表、向后兼容旧配置）
+- [x] **T9** `framework/database/manager.go` — 实现 `dbManager`（多连接懒加载、驱动注册表、向后兼容旧配置；修复文件编码损坏导致的语法错误）
 - [x] **T10** `framework/database/service_provider.go` — 注册 `"db"` 服务，保留兼容 `"orm"`，Shutdown 时关闭所有连接
 - [x] **T11** `framework/facades/db.go` — 新增 `facades.DB()`
 - [x] **T12** `framework/facades/orm.go` — 添加 Deprecated 注释
 - [x] **T13** `framework/contracts/orm.go` — 添加 Deprecated 注释
 
 ### Phase 5：业务代码迁移
-- [x] **T14** `app/http/admin/controllers/user_controller.go` — 替换 `facades.Orm().DB().*` 为 `facades.DB().Query().*`
+- [x] **T14** `app/http/admin/controllers/user_controller.go` — 替换为 `facades.DB().Query().*`；使用 `errors.Is(contracts.ErrRecordNotFound)` 精确判断
 - [x] **T15** `app/http/app/controllers/user_controller.go` — 同上替换
 
 ### Phase 6：Application 层适配
-- [x] **T16** `framework/foundation/application.go` — 新增 `DB()` 快捷方法
-- [x] **T17** `framework/foundation/provider.go` — `Migrator` 接口适配新 `contracts.DB`（兼容旧 `contracts.Orm`）
+- [x] **T16** `framework/foundation/application.go` — 新增 `DB() contracts.DB` 到 `Application` 接口与实现
+- [x] **T17** `framework/foundation/provider.go` — 新增 `DBMigrator` 接口（`MigrateDB(db contracts.DB) error`）；`Boot` 同时支持旧 `Migrator` 与新 `DBMigrator`
+
+### 额外修复（实现中发现的 Bug）
+- [x] `framework/contracts/storage.go` — `Storage` 接口嵌入 `StorageDriver`（原嵌入 `Driver` 与数据库 `Driver` 命名冲突）
+- [x] `framework/http/response.go` — `contracts.Driver` → `contracts.StorageDriver`
+- [x] `framework/database/orm.go` — 修复错误导入 `gormdriver.io/gorm/logger` → `gorm.io/gorm/logger`
+- [x] `app/models/user.go` — struct tag 从 `gormdriver:"..."` 修正为 `gorm:"..."`
 
 ### 暂缓（后续迭代）
 - [ ] `plugins/gofast-xorm/` — xorm Driver & Query 实现

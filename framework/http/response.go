@@ -55,7 +55,7 @@ func (r *Response) File(file string, disk ...string) error {
 		return r.Fail(http.StatusInternalServerError, "storage not available")
 	}
 
-	var driver contracts.Driver = ctx.storage
+	var driver contracts.StorageDriver = ctx.storage
 	if len(disk) > 0 && disk[0] != "" {
 		driver = ctx.storage.Disk(disk[0])
 	}
@@ -78,7 +78,7 @@ func (r *Response) Download(file string, name string, disk ...string) error {
 		return r.Fail(http.StatusInternalServerError, "storage not available")
 	}
 
-	var driver contracts.Driver = ctx.storage
+	var driver contracts.StorageDriver = ctx.storage
 	if len(disk) > 0 && disk[0] != "" {
 		driver = ctx.storage.Disk(disk[0])
 	}

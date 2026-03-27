@@ -57,18 +57,21 @@ func (sp *ServiceProvider) ConfigDefaults() map[string]any {
 
 用户只需在 `config.yaml` 中覆盖自己想改的部分，其余值使用插件默认值。
 
-### 3.2 Migrator — 自动数据库迁移
+### 3.2 DBMigrator — 自动数据库迁移
 
-实现此接口后，框架在 Phase 3（所有 Boot 完成后）自动调用 `Migrate`，
-无需在 `Boot()` 中手动获取 ORM 并调用 AutoMigrate。
+实现此接口后，框架在 Phase 3（所有 Boot 完成后）自动调用 `MigrateDB`，
+无需在 `Boot()` 中手动获取数据库并调用 AutoMigrate。
 
 ```go
-func (sp *ServiceProvider) Migrate(orm contracts.Orm) error {
-    return orm.AutoMigrate(&Post{}, &Comment{}, &Tag{})
+func (sp *ServiceProvider) MigrateDB(db contracts.DB) error {
+    return db.AutoMigrate(&Post{}, &Comment{}, &Tag{})
 }
 ```
 
-> 若应用未注册数据库服务（`"orm"` 未绑定），该方法不会被调用。
+> 若应用未注册数据库服务（`"db"` 未绑定），该方法不会被调用。
+
+> **兼容旧接口**：仍支持 `Migrator.Migrate(orm contracts.Orm) error`，但已标记为 Deprecated，
+> 推荐改用 `DBMigrator.MigrateDB(db contracts.DB) error`。
 
 ### 3.3 RouteRegistrar — 注册 HTTP 路由
 
@@ -102,9 +105,10 @@ func (sp *ServiceProvider) RegisterRoutes(r contracts.Route) {
 app.Config()   // contracts.Config
 app.Log()      // contracts.Log
 app.Cache()    // contracts.Cache
-app.Orm()      // contracts.Orm
+app.DB()       // contracts.DB     ← 推荐：新数据库管理器
+app.Orm()      // contracts.Orm    ← Deprecated，请迁移到 DB()
 app.Route()    // contracts.Route
-app.Storage()  // contracts.Storage
+app.Storage()  // contracts.StorageDriver
 ```
 
 ---
@@ -130,22 +134,19 @@ gofast-blog/
 // models.go
 package blog
 
-import "time"
+import "github.com/zhoudm1743/go-fast/framework/database"
 
 type Post struct {
-    ID        string    `gormdriver:"primaryKey"`
-    Title     string    `gormdriver:"not null"`
-    Content   string
-    Published bool      `gormdriver:"default:false"`
-    CreatedAt time.Time
-    UpdatedAt time.Time
+    database.Model
+    Title     string `gorm:"not null"`
+    Content   string `gorm:"type:text"`
+    Published bool   `gorm:"default:false"`
 }
 
 type Comment struct {
-    ID        string `gormdriver:"primaryKey"`
-    PostID    string `gormdriver:"index;not null"`
-    Body      string `gormdriver:"not null"`
-    CreatedAt time.Time
+    database.Model
+    PostID string `gorm:"index;not null"`
+    Body   string `gorm:"type:text;not null"`
 }
 ```
 
@@ -167,14 +168,12 @@ type ServiceProvider struct{}
 // ── 必须实现 ──────────────────────────────────────────────────────────
 
 func (sp *ServiceProvider) Register(app foundation.Application) {
-    // 绑定插件自己的服务到容器（可选，简单插件可为空）
     app.Singleton("blog", func(app foundation.Application) (any, error) {
-        return NewBlogService(app.Orm(), app.Cache()), nil
+        return NewBlogService(app.DB(), app.Cache()), nil
     })
 }
 
 func (sp *ServiceProvider) Boot(app foundation.Application) error {
-    // 注册关闭钩子（如有需要）
     app.OnShutdown(func() {
         app.Log().Info("[blog] shutting down")
     })
@@ -191,10 +190,10 @@ func (sp *ServiceProvider) ConfigDefaults() map[string]any {
     }
 }
 
-// ── Migrator：自动数据库迁移 ──────────────────────────────────────────
+// ── DBMigrator：自动数据库迁移（推荐）────────────────────────────────
 
-func (sp *ServiceProvider) Migrate(orm contracts.Orm) error {
-    return orm.AutoMigrate(&Post{}, &Comment{})
+func (sp *ServiceProvider) MigrateDB(db contracts.DB) error {
+    return db.AutoMigrate(&Post{}, &Comment{})
 }
 
 // ── RouteRegistrar：注册 HTTP 路由 ────────────────────────────────────
@@ -224,6 +223,9 @@ func (sp *ServiceProvider) Boot(app foundation.Application) error {
     perPage := app.Config().GetInt("blog.per_page", 10)
     app.Log().Infof("[blog] per_page = %d", perPage)
 
+    // 数据库操作（使用新 DB 接口）
+    _ = app.DB().Ping()
+
     // 读取缓存
     _ = app.Cache().Put("blog:init", true, 0)
 
@@ -249,7 +251,7 @@ func (sp *ServiceProvider) DeferredServices() []string {
 }
 ```
 
-> ⚠️ 延迟 Provider **不参与** Phase 3/4，即 `Migrator.Migrate` 和
+> ⚠️ 延迟 Provider **不参与** Phase 3/4，即 `DBMigrator.MigrateDB` 和
 > `RouteRegistrar.RegisterRoutes` 不会被框架自动调用。
 > 如需迁移或注册路由，请改为即时 Provider，或在 `Boot()` 中手动处理。
 
@@ -396,7 +398,7 @@ func TestBlogServiceProvider(t *testing.T) {
 - [ ] `go mod tidy` 无多余依赖
 - [ ] 所有声明的 `contracts` 接口方法均已实现
 - [ ] 通过 `ConfigDefaults()` 为所有配置项提供默认值
-- [ ] `Migrator.Migrate()` 已实现（如有数据库模型）
+- [ ] `DBMigrator.MigrateDB()` 已实现（如有数据库模型）
 - [ ] `RouteRegistrar.RegisterRoutes()` 已实现（如提供 HTTP 接口）
 - [ ] `OnShutdown` 钩子已注册（如持有资源）
 - [ ] `_test.go` 覆盖核心逻辑

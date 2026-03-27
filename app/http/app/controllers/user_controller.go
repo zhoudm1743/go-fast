@@ -1,9 +1,10 @@
 package controllers
 
 import (
-	"github.com/zhoudm1743/go-fast/app/http/admin/requests"
+	"errors"
 	"net/http"
 
+	"github.com/zhoudm1743/go-fast/app/http/admin/requests"
 	"github.com/zhoudm1743/go-fast/app/models"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 	"github.com/zhoudm1743/go-fast/framework/facades"
@@ -22,28 +23,27 @@ func (c *UserController) Boot(r contracts.Route) {
 	r.Put("/profile", c.UpdateProfile)
 }
 
-// ── 控制器方法 ────────────────────────────────────────────────────────
-
 // Profile GET /user/profile
-// 读取当前登录用户的个人信息（user_id 由 Auth 中间件通过 ctx.WithValue 注入）。
 func (c *UserController) Profile(ctx contracts.Context) error {
-	userID, ok2 := ctx.Value("user_id").(string)
-	if !ok2 || userID == "" {
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
 		return ctx.Response().Unauthorized("未登录")
 	}
 
 	var user models.User
-	if err := facades.Orm().DB().First(&user, "id = ?", userID).Error; err != nil {
-		return ctx.Response().NotFound("用户不存在")
+	if err := facades.DB().Query().First(&user, "id = ?", userID); err != nil {
+		if errors.Is(err, contracts.ErrRecordNotFound) {
+			return ctx.Response().NotFound("用户不存在")
+		}
+		return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
 	}
 	return ctx.Response().Success(user)
 }
 
 // UpdateProfile PUT /user/profile
-// 更新当前登录用户的个人资料。
 func (c *UserController) UpdateProfile(ctx contracts.Context) error {
-	userID, ok2 := ctx.Value("user_id").(string)
-	if !ok2 || userID == "" {
+	userID, ok := ctx.Value("user_id").(string)
+	if !ok || userID == "" {
 		return ctx.Response().Unauthorized("未登录")
 	}
 
@@ -53,12 +53,15 @@ func (c *UserController) UpdateProfile(ctx contracts.Context) error {
 	}
 
 	var user models.User
-	if err := facades.Orm().DB().First(&user, "id = ?", userID).Error; err != nil {
-		return ctx.Response().NotFound("用户不存在")
+	if err := facades.DB().Query().First(&user, "id = ?", userID); err != nil {
+		if errors.Is(err, contracts.ErrRecordNotFound) {
+			return ctx.Response().NotFound("用户不存在")
+		}
+		return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
 	}
 
 	if req.Name != "" {
-		if err := facades.Orm().DB().Model(&user).Update("name", req.Name).Error; err != nil {
+		if err := facades.DB().Query().Model(&user).Update("name", req.Name); err != nil {
 			return ctx.Response().Fail(http.StatusInternalServerError, "更新失败")
 		}
 	}
