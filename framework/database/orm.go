@@ -14,7 +14,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
+	gormLogger "gormdriver.io/gorm/logger"
 )
 
 type orm struct {
@@ -178,7 +178,7 @@ func buildGormConfig(cfg contracts.Config, log contracts.Log) *gorm.Config {
 }
 
 func registerUUIDPrimaryKey(db *gorm.DB) {
-	_ = db.Callback().Create().Before("gorm:before_create").Register("gofast:uuid_primary_key", func(db *gorm.DB) {
+	_ = db.Callback().Create().Before("gormdriver:before_create").Register("gofast:uuid_primary_key", func(db *gorm.DB) {
 		if db.Statement.Dest == nil {
 			return
 		}

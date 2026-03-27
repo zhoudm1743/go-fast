@@ -200,7 +200,7 @@ type Driver interface {
 	Close() error
 	// AutoMigrate 根据 struct 自动建表/迁移
 	AutoMigrate(models ...any) error
-	// DriverName 返回驱动标识，如 "gorm"、"xorm"、"torm"
+	// DriverName 返回驱动标识，如 "gormdriver"、"xorm"、"torm"
 	DriverName() string
 }
 

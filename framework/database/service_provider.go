@@ -2,7 +2,7 @@ package database
 
 import (
 	"github.com/zhoudm1743/go-fast/framework/contracts"
-	gormdriver "github.com/zhoudm1743/go-fast/framework/database/drivers/gorm"
+	gormdriver "github.com/zhoudm1743/go-fast/framework/database/drivers/gormdriver"
 	"github.com/zhoudm1743/go-fast/framework/foundation"
 )
 
@@ -11,7 +11,7 @@ type ServiceProvider struct{}
 
 func (sp *ServiceProvider) Register(app foundation.Application) {
 	// 内置注册 GORM 驱动工厂
-	RegisterDriver("gorm", func(cfg ConnectionConfig, log contracts.Log) (contracts.Driver, error) {
+	RegisterDriver("gormdriver", func(cfg ConnectionConfig, log contracts.Log) (contracts.Driver, error) {
 		return gormdriver.NewGormDriver(cfg, log)
 	})
 

@@ -294,15 +294,15 @@ import "github.com/zhoudm1743/go-fast/framework/database"
 // User 业务模型，嵌入 database.Model 即自带 UUID v7 主键。
 type User struct {
     database.Model
-    Name  string `gorm:"size:100" json:"name"`
-    Email string `gorm:"size:200;uniqueIndex" json:"email"`
+    Name  string `gormdriver:"size:100" json:"name"`
+    Email string `gormdriver:"size:200;uniqueIndex" json:"email"`
 }
 
 // 带软删除
 type Article struct {
     database.ModelWithSoftDelete
-    Title   string `gorm:"size:255" json:"title"`
-    Content string `gorm:"type:text" json:"content"`
+    Title   string `gormdriver:"size:255" json:"title"`
+    Content string `gormdriver:"type:text" json:"content"`
 }
 ```
 

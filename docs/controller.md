@@ -124,9 +124,9 @@ import "github.com/zhoudm1743/go-fast/framework/database"
 
 type User struct {
     database.Model                                      // ID + CreatedAt + UpdatedAt
-    Name     string `gorm:"size:100;not null"        json:"name"`
-    Email    string `gorm:"size:200;uniqueIndex;not null" json:"email"`
-    Password string `gorm:"size:255;not null"        json:"-"` // json:"-" 不序列化
+    Name     string `gormdriver:"size:100;not null"        json:"name"`
+    Email    string `gormdriver:"size:200;uniqueIndex;not null" json:"email"`
+    Password string `gormdriver:"size:255;not null"        json:"-"` // json:"-" 不序列化
 }
 ```
 

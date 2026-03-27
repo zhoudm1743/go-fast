@@ -5,7 +5,7 @@ import "fmt"
 // ConnectionConfig 单个数据库连接的完整配置。
 type ConnectionConfig struct {
 	// ── 驱动与引擎 ──────────────────────────────────────────
-	Driver string `mapstructure:"driver"` // ORM 驱动：gorm | xorm | torm
+	Driver string `mapstructure:"driver"` // ORM 驱动：gormdriver | xorm | torm
 	Engine string `mapstructure:"engine"` // 数据库引擎：mysql | postgres | sqlite | mssql
 
 	// ── 直连 DSN（优先级高于以下分项配置）──────────────────
@@ -75,7 +75,7 @@ func (c *ConnectionConfig) BuildDSN() string {
 // ApplyDefaults 为未设置的配置项填充默认值。
 func (c *ConnectionConfig) ApplyDefaults() {
 	if c.Driver == "" {
-		c.Driver = "gorm"
+		c.Driver = "gormdriver"
 	}
 	if c.MaxIdleConns == 0 {
 		c.MaxIdleConns = 10

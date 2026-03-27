@@ -150,7 +150,7 @@ type Driver interface {
     Close() error
     // AutoMigrate 根据 struct 自动建表/迁移
     AutoMigrate(models ...any) error
-    // DriverName 返回驱动标识，如 "gorm"、"xorm"、"torm"
+    // DriverName 返回驱动标识，如 "gormdriver"、"xorm"、"torm"
     DriverName() string
 }
 ```
@@ -228,7 +228,7 @@ database:
 
   connections:
     main:
-      driver: gorm       # ORM 驱动：gorm | xorm | torm
+      driver: gormdriver       # ORM 驱动：gormdriver | xorm | torm
       engine: sqlite     # 数据库引擎：mysql | postgres | sqlite | mssql
       database: database/gofast.db
       max_idle_conns: 10
@@ -239,7 +239,7 @@ database:
       slow_threshold: 200     # ms
 
     read_replica:
-      driver: gorm
+      driver: gormdriver
       engine: mysql
       host: 10.0.0.2
       port: 3306
@@ -330,12 +330,12 @@ func (d *GormDriver) Query(ctx ...context.Context) contracts.Query {
     return &GormQuery{db: db}
 }
 
-func (d *GormDriver) DriverName() string          { return "gorm" }
+func (d *GormDriver) DriverName() string          { return "gormdriver" }
 func (d *GormDriver) Ping() error                 { /* sqlDB.Ping() */ }
 func (d *GormDriver) Close() error                { /* sqlDB.Close() */ }
 func (d *GormDriver) AutoMigrate(m ...any) error  { return d.db.AutoMigrate(m...) }
 
-// RawDB 逃生口：允许高级用户直接获取 *gorm.DB（不推荐常规使用）
+// RawDB 逃生口：允许高级用户直接获取 *gormdriver.DB（不推荐常规使用）
 func (d *GormDriver) RawDB() *gorm.DB { return d.db }
 ```
 
@@ -344,7 +344,7 @@ func (d *GormDriver) RawDB() *gorm.DB { return d.db }
 ```go
 package gormdriver
 
-// GormQuery 将 contracts.Query 的每个方法代理到 *gorm.DB
+// GormQuery 将 contracts.Query 的每个方法代理到 *gormdriver.DB
 type GormQuery struct {
     db *gorm.DB
 }
@@ -363,7 +363,7 @@ func (q *GormQuery) Create(value any) error {
     return q.db.Create(value).Error
 }
 
-// 事务：将 *gorm.DB 事务转换为 contracts.Query
+// 事务：将 *gormdriver.DB 事务转换为 contracts.Query
 func (q *GormQuery) Transaction(fc func(tx contracts.Query) error, opts ...contracts.TxOption) error {
     return q.db.Transaction(func(tx *gorm.DB) error {
         return fc(&GormQuery{db: tx})
@@ -487,9 +487,9 @@ q.Paginate(req.Page, req.Size).Find(&users)
 ```go
 // framework/database/model.go
 type Model struct {
-    ID        string `gorm:"primaryKey;size:36;column:id"   xorm:"pk varchar(36) 'id'"    json:"id"`
-    CreatedAt int64  `gorm:"autoCreateTime;column:created_at" xorm:"created 'created_at'" json:"created_at"`
-    UpdatedAt int64  `gorm:"autoUpdateTime;column:updated_at" xorm:"updated 'updated_at'" json:"updated_at"`
+    ID        string `gormdriver:"primaryKey;size:36;column:id"   xorm:"pk varchar(36) 'id'"    json:"id"`
+    CreatedAt int64  `gormdriver:"autoCreateTime;column:created_at" xorm:"created 'created_at'" json:"created_at"`
+    UpdatedAt int64  `gormdriver:"autoUpdateTime;column:updated_at" xorm:"updated 'updated_at'" json:"updated_at"`
 }
 ```
 

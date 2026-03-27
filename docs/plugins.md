@@ -133,18 +133,18 @@ package blog
 import "time"
 
 type Post struct {
-    ID        string    `gorm:"primaryKey"`
-    Title     string    `gorm:"not null"`
+    ID        string    `gormdriver:"primaryKey"`
+    Title     string    `gormdriver:"not null"`
     Content   string
-    Published bool      `gorm:"default:false"`
+    Published bool      `gormdriver:"default:false"`
     CreatedAt time.Time
     UpdatedAt time.Time
 }
 
 type Comment struct {
-    ID        string `gorm:"primaryKey"`
-    PostID    string `gorm:"index;not null"`
-    Body      string `gorm:"not null"`
+    ID        string `gormdriver:"primaryKey"`
+    PostID    string `gormdriver:"index;not null"`
+    Body      string `gormdriver:"not null"`
     CreatedAt time.Time
 }
 ```

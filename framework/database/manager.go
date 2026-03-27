@@ -83,7 +83,7 @@ var _ contracts.DB = (*dbManager)(nil)
 
 // readConnectionConfig 从配置中读取指定前缀的连接配置�?func (m *dbManager) readConnectionConfig(prefix string) ConnectionConfig {
 	return ConnectionConfig{
-		Driver:          m.cfg.GetString(prefix+".driver", "gorm"),
+		Driver:          m.cfg.GetString(prefix+".driver", "gormdriver"),
 		Engine:          m.cfg.GetString(prefix+".engine", "sqlite"),
 		DSN:             m.cfg.GetString(prefix + ".dsn"),
 		Host:            m.cfg.GetString(prefix+".host", "localhost"),
@@ -107,7 +107,7 @@ var _ contracts.DB = (*dbManager)(nil)
 // readLegacyConfig 读取旧的扁平�?database.* 配置�?func (m *dbManager) readLegacyConfig() ConnectionConfig {
 	// 旧配置的 driver 同时代表 engine（sqlite/mysql/postgres/mssql�?	engine := m.cfg.GetString("database.driver", "sqlite")
 	return ConnectionConfig{
-		Driver:          "gorm", // 旧配置默认使�?GORM
+		Driver:          "gormdriver", // 旧配置默认使�?GORM
 		Engine:          engine,
 		Host:            m.cfg.GetString("database.host", "localhost"),
 		Port:            m.cfg.GetInt("database.port", 0),

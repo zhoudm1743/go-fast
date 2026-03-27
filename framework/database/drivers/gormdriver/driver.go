@@ -13,7 +13,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
+	gormLogger "gormdriver.io/gormdriver/logger"
 )
 
 // GormDriver 实现 contracts.Driver
@@ -29,7 +29,7 @@ func NewGormDriver(cfg database.ConnectionConfig, log contracts.Log) (*GormDrive
 
 	dsn := cfg.BuildDSN()
 	if dsn == "" {
-		return nil, fmt.Errorf("[GoFast] gorm driver: unsupported engine %q", cfg.Engine)
+		return nil, fmt.Errorf("[GoFast] gormdriver driver: unsupported engine %q", cfg.Engine)
 	}
 
 	gormCfg := buildGormConfig(cfg, log)
@@ -47,17 +47,17 @@ func NewGormDriver(cfg database.ConnectionConfig, log contracts.Log) (*GormDrive
 	case "mssql":
 		db, err = gorm.Open(sqlserver.Open(dsn), gormCfg)
 	default:
-		return nil, fmt.Errorf("[GoFast] gorm driver: unsupported engine %q", cfg.Engine)
+		return nil, fmt.Errorf("[GoFast] gormdriver driver: unsupported engine %q", cfg.Engine)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("[GoFast] gorm driver: connection failed: %w", err)
+		return nil, fmt.Errorf("[GoFast] gormdriver driver: connection failed: %w", err)
 	}
 
 	// 配置连接池
 	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, fmt.Errorf("[GoFast] gorm driver: get sql.DB failed: %w", err)
+		return nil, fmt.Errorf("[GoFast] gormdriver driver: get sql.DB failed: %w", err)
 	}
 	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
@@ -81,7 +81,7 @@ func (d *GormDriver) Query(ctx ...context.Context) contracts.Query {
 	return &GormQuery{db: db}
 }
 
-func (d *GormDriver) DriverName() string { return "gorm" }
+func (d *GormDriver) DriverName() string { return "gormdriver" }
 
 func (d *GormDriver) Ping() error {
 	sqlDB, err := d.db.DB()
