@@ -1,6 +1,6 @@
 package facades
 
-import "go-fast/framework/foundation"
+import "github.com/zhoudm1743/go-fast/framework/foundation"
 
 var app foundation.Application
 

@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"

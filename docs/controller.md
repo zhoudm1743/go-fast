@@ -1,7 +1,7 @@
 # GoFast 控制器开发指南
 
 > 本文介绍如何在 GoFast 中编写控制器，涵盖：控制器自注册、请求解析、表单验证、数据库操作、统一响应结构和中间件。
-> 所有控制器代码 **只依赖 `go-fast/framework/contracts` 和 `go-fast/framework/facades`**，不引入任何底层 HTTP 框架包。
+> 所有控制器代码 **只依赖 `github.com/zhoudm1743/go-fast/framework/contracts` 和 `github.com/zhoudm1743/go-fast/framework/facades`**，不引入任何底层 HTTP 框架包。
 >
 > 控制器通过实现 `contracts.Controller` 接口在 `Boot()` 中声明自己的路由，路由文件只做编排。
 > 详见 [路由设计文档](route.md)。
@@ -120,7 +120,7 @@ app/
 // app/models/user.go
 package models
 
-import "go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast/framework/database"
 
 type User struct {
     database.Model                                      // ID + CreatedAt + UpdatedAt

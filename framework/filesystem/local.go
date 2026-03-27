@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 type localDriver struct {
@@ -166,7 +166,7 @@ func (d *localDriver) AllDirectories(path string) ([]string, error) {
 	return listDir(d.fullPath(path), true, true)
 }
 
-func (d *localDriver) WithContext(_ context.Context) contracts.Driver {
+func (d *localDriver) WithContext(_ context.Context) contracts.StorageDriver {
 	return d
 }
 

@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 const defaultShardCount = 32

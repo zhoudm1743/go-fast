@@ -1,6 +1,6 @@
 package facades
 
-import "go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast/framework/contracts"
 
 // Config 获取配置服务实例。
 func Config() contracts.Config {

@@ -25,7 +25,7 @@
 返回全局 `foundation.Application` 实例，可直接调用容器方法和应用方法。
 
 ```go
-import "go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast/framework/facades"
 
 app := facades.App()
 
@@ -583,7 +583,7 @@ type Input struct {
 // facades/xxx.go 的标准模式
 package facades
 
-import "go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast/framework/contracts"
 
 func Xxx() contracts.XxxInterface {
     return App().MustMake("xxx_key").(contracts.XxxInterface)
@@ -596,7 +596,7 @@ func Xxx() contracts.XxxInterface {
 // facades/sms.go
 package facades
 
-import "go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast/framework/contracts"
 
 func Sms() contracts.Sms {
     return App().MustMake("sms").(contracts.Sms)

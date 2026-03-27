@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 // Response 是 GoFast 标准 JSON 响应结构。

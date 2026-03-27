@@ -1,14 +1,29 @@
 package database
 
 import (
-	"go-fast/framework/contracts"
-	"go-fast/framework/foundation"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
+	gormdriver "github.com/zhoudm1743/go-fast/framework/database/drivers/gorm"
+	"github.com/zhoudm1743/go-fast/framework/foundation"
 )
 
 // ServiceProvider Database 服务提供者。
 type ServiceProvider struct{}
 
 func (sp *ServiceProvider) Register(app foundation.Application) {
+	// 内置注册 GORM 驱动工厂
+	RegisterDriver("gorm", func(cfg ConnectionConfig, log contracts.Log) (contracts.Driver, error) {
+		return gormdriver.NewGormDriver(cfg, log)
+	})
+
+	// 注册新的 "db" 服务（contracts.DB）
+	app.Singleton("db", func(app foundation.Application) (any, error) {
+		cfg := app.MustMake("config").(contracts.Config)
+		log := app.MustMake("log").(contracts.Log)
+		return NewDBManager(cfg, log)
+	})
+
+	// 保留旧的 "orm" 服务以向后兼容
+	// Deprecated: 请使用 "db" 服务
 	app.Singleton("orm", func(app foundation.Application) (any, error) {
 		cfg := app.MustMake("config").(contracts.Config)
 		log := app.MustMake("log").(contracts.Log)
@@ -18,8 +33,9 @@ func (sp *ServiceProvider) Register(app foundation.Application) {
 
 func (sp *ServiceProvider) Boot(app foundation.Application) error {
 	app.OnShutdown(func() {
-		if o, err := app.Make("orm"); err == nil {
-			if closer, ok := o.(contracts.Orm); ok {
+		// 优先关闭新的 db 服务
+		if db, err := app.Make("db"); err == nil {
+			if closer, ok := db.(contracts.DB); ok {
 				_ = closer.Close()
 			}
 		}

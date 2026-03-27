@@ -1,6 +1,6 @@
 package validation
 
-import "go-fast/framework/foundation"
+import "github.com/zhoudm1743/go-fast/framework/foundation"
 
 // ServiceProvider Validation 服务提供者。
 type ServiceProvider struct{}

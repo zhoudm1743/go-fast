@@ -4,19 +4,19 @@ import (
 	"context"
 	"fmt"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 type storage struct {
-	drivers     map[string]contracts.Driver
+	drivers     map[string]contracts.StorageDriver
 	defaultDisk string
 }
 
-func NewStorage(cfg contracts.Config) (contracts.Storage, error) {
+func NewStorage(cfg contracts.Config) (contracts.StorageDriver, error) {
 	defaultDisk := cfg.GetString("filesystem.default", "local")
 
 	s := &storage{
-		drivers:     make(map[string]contracts.Driver),
+		drivers:     make(map[string]contracts.StorageDriver),
 		defaultDisk: defaultDisk,
 	}
 
@@ -58,14 +58,14 @@ func NewStorage(cfg contracts.Config) (contracts.Storage, error) {
 	return s, nil
 }
 
-func (s *storage) defaultDriver() contracts.Driver {
+func (s *storage) defaultDriver() contracts.StorageDriver {
 	if d, ok := s.drivers[s.defaultDisk]; ok {
 		return d
 	}
 	return s.drivers["local"]
 }
 
-func (s *storage) Disk(disk string) contracts.Driver {
+func (s *storage) Disk(disk string) contracts.StorageDriver {
 	if d, ok := s.drivers[disk]; ok {
 		return d
 	}
@@ -106,6 +106,6 @@ func (s *storage) Directories(path string) ([]string, error) {
 func (s *storage) AllDirectories(path string) ([]string, error) {
 	return s.defaultDriver().AllDirectories(path)
 }
-func (s *storage) WithContext(ctx context.Context) contracts.Driver {
+func (s *storage) WithContext(ctx context.Context) contracts.StorageDriver {
 	return s.defaultDriver().WithContext(ctx)
 }

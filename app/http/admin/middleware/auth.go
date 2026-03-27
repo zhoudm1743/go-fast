@@ -3,7 +3,7 @@ package middleware
 import (
 	"strings"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 // AdminAuth 后台管理鉴权中间件（示例）。

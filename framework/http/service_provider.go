@@ -1,8 +1,8 @@
 package http
 
 import (
-	"go-fast/framework/contracts"
-	"go-fast/framework/foundation"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/foundation"
 )
 
 // ServiceProvider HTTP 路由服务提供者。

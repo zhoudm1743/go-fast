@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go-fast/bootstrap"
-	"go-fast/framework/facades"
-	"go-fast/routes"
+	"github.com/zhoudm1743/go-fast/bootstrap"
+	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast/routes"
 )
 
 func main() {

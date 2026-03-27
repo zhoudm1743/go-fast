@@ -1,10 +1,10 @@
 package routes
 
 import (
-	adminControllers "go-fast/app/http/admin/controllers"
-	adminMiddleware "go-fast/app/http/admin/middleware"
-	"go-fast/framework/contracts"
-	"go-fast/framework/facades"
+	adminControllers "github.com/zhoudm1743/go-fast/app/http/admin/controllers"
+	adminMiddleware "github.com/zhoudm1743/go-fast/app/http/admin/middleware"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/facades"
 )
 
 // RegisterAdmin 注册后台管理路由，统一前缀 /admin。

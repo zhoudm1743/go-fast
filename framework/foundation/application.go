@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 const Version = "0.1.0"

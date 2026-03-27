@@ -1,6 +1,6 @@
 package foundation
 
-import "go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast/framework/contracts"
 
 // ServiceProvider 服务提供者接口。
 // Register 阶段绑定服务到容器（不可使用其他服务）；

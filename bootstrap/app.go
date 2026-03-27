@@ -1,15 +1,15 @@
 package bootstrap
 
 import (
-	"go-fast/framework/cache"
-	"go-fast/framework/config"
-	"go-fast/framework/database"
-	"go-fast/framework/facades"
-	"go-fast/framework/filesystem"
-	"go-fast/framework/foundation"
-	gohttp "go-fast/framework/http"
-	"go-fast/framework/log"
-	"go-fast/framework/validation"
+	"github.com/zhoudm1743/go-fast/framework/cache"
+	"github.com/zhoudm1743/go-fast/framework/config"
+	"github.com/zhoudm1743/go-fast/framework/database"
+	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast/framework/filesystem"
+	"github.com/zhoudm1743/go-fast/framework/foundation"
+	gohttp "github.com/zhoudm1743/go-fast/framework/http"
+	"github.com/zhoudm1743/go-fast/framework/log"
+	"github.com/zhoudm1743/go-fast/framework/validation"
 )
 
 // Boot 创建并引导 GoFast 应用。

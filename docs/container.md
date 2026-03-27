@@ -227,8 +227,8 @@ package main
 
 import (
     "fmt"
-    "go-fast/framework/facades"
-    "go-fast/framework/foundation"
+    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast/framework/foundation"
 )
 
 func main() {

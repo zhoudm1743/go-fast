@@ -70,7 +70,7 @@ package sms
 
 import (
     "fmt"
-    "go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 type smsService struct {
@@ -106,8 +106,8 @@ func (s *smsService) SendCode(phone string, code string) error {
 package sms
 
 import (
-    "go-fast/framework/contracts"
-    "go-fast/framework/foundation"
+    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast/framework/foundation"
 )
 
 // ServiceProvider SMS 服务提供者。
@@ -134,7 +134,7 @@ func (sp *ServiceProvider) Boot(app foundation.Application) error {
 // facades/sms.go
 package facades
 
-import "go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast/framework/contracts"
 
 // Sms 获取短信服务实例。
 func Sms() contracts.Sms {

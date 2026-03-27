@@ -3,7 +3,7 @@ package middleware
 import (
 	"strings"
 
-	"go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 // Auth 前台用户鉴权中间件（示例）。

@@ -1,4 +1,4 @@
-module go-fast
+module github.com/zhoudm1743/go-fast
 
 go 1.25.5
 

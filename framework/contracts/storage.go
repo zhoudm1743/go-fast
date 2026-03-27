@@ -10,7 +10,7 @@ type Storage interface {
 }
 
 // Driver 文件系统驱动契约。
-type Driver interface {
+type StorageDriver interface {
 	// Put 写入文件内容。
 	Put(file, content string) error
 	// PutFile 上传文件到指定路径。
@@ -56,7 +56,7 @@ type Driver interface {
 	// AllDirectories 递归获取所有子目录。
 	AllDirectories(path string) ([]string, error)
 	// WithContext 设置上下文。
-	WithContext(ctx context.Context) Driver
+	WithContext(ctx context.Context) StorageDriver
 }
 
 // File 上传文件抽象。
