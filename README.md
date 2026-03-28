@@ -19,7 +19,8 @@
 - **文件存储** — 多磁盘管理，内置本地驱动，可扩展云存储
 - **验证器** — 基于 go-playground/validator，结构体 tag 声明式验证
 - **HTTP 路由** — 基于 Fiber v2，链式注册、路由组、中间件
-- **优雅关闭** — 信号监听，按逆序释放资源
+- **gRPC 服务** — 内置 gRPC Server，支持 Unary/Stream 拦截器、Keepalive、Server Reflection，与 HTTP 同进程并行运行
+- **优雅关闭** — 信号监听，按逆序释放资源（HTTP + gRPC 均覆盖）
 - **插件化** — 任何 Go module 均可作为插件接入
 
 ---
@@ -41,8 +42,9 @@ go run main.go
 |------|------|
 | [快速开始](docs/getting-started.md) | 环境要求、配置、启动、路由注册、模型定义 |
 | [控制器开发指南](docs/controller.md) | 控制器、请求验证、数据库、中间件完整示例 |
+| [gRPC 使用指南](docs/grpc.md) | gRPC 服务定义、代码生成、拦截器、grpcurl 调试 |
 | [容器 API](docs/container.md) | Bind / Singleton / Instance / Make 完整接口 |
-| [Facade 使用说明](docs/facade.md) | Config / Log / Cache / Orm / Route / Storage / Validator |
+| [Facade 使用说明](docs/facade.md) | Config / Log / Cache / Orm / Route / Storage / Validator / GRPC |
 | [编写自定义 Provider](docs/service-provider.md) | ServiceProvider 接口、延迟加载、关闭钩子 |
 | [插件开发指南](docs/plugins.md) | 独立 module 插件的开发、发布与接入规范 |
 
@@ -71,7 +73,8 @@ GoFast/
 ├── routes/
 │   ├── api.go                   # 路由统一入口
 │   ├── app.go                   # 前台路由注册
-│   └── admin.go                 # 后台路由注册
+│   ├── admin.go                 # 后台路由注册
+│   └── grpc.go                  # gRPC 服务注册
 ├── framework/                   # 框架核心（不建议修改）
 │   ├── foundation/              # IoC 容器 & Application
 │   ├── contracts/               # 服务接口定义
@@ -82,6 +85,7 @@ GoFast/
 │   ├── database/                # ORM 数据库服务
 │   ├── filesystem/              # 文件存储服务
 │   ├── http/                    # HTTP 路由服务
+│   ├── gRPC/                    # gRPC 服务器（拦截器、Server 封装、ServiceProvider）
 │   ├── validation/              # 验证服务
 │   └── support/                 # 工具函数
 ├── docs/                        # 文档

@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "github.com/zhoudm1743/go-fast/app/grpc/proto/user;userpb";
+
+// UserService 对外暴露的 gRPC 用户服务。
+service UserService {
+    // GetUser 根据 ID 查询用户。
+    rpc GetUser(GetUserRequest) returns (UserReply);
+    // ListUsers 分页查询用户列表。
+    rpc ListUsers(ListUsersRequest) returns (ListUsersReply);
+    // CreateUser 创建用户。
+    rpc CreateUser(CreateUserRequest) returns (UserReply);
+    // UpdateUser 更新用户。
+    rpc UpdateUser(UpdateUserRequest) returns (UserReply);
+    // DeleteUser 删除用户。
+    rpc DeleteUser(DeleteUserRequest) returns (DeleteUserReply);
+}
+
+// ── 消息定义 ──────────────────────────────────────────────────────────
+
+message GetUserRequest {
+    string id = 1;
+}
+
+message ListUsersRequest {
+    int32 page  = 1;
+    int32 size  = 2;
+    string email = 3;  // 可选，邮箱模糊搜索
+}
+
+message CreateUserRequest {
+    string name     = 1;
+    string email    = 2;
+    string password = 3;
+}
+
+message UpdateUserRequest {
+    string id    = 1;
+    string name  = 2;
+    string email = 3;
+}
+
+message DeleteUserRequest {
+    string id = 1;
+}
+
+message UserReply {
+    string id         = 1;
+    string name       = 2;
+    string email      = 3;
+    string created_at = 4;
+    string updated_at = 5;
+}
+
+message ListUsersReply {
+    repeated UserReply users = 1;
+    int64 total              = 2;
+    int32 page               = 3;
+    int32 size               = 4;
+}
+
+message DeleteUserReply {
+    bool success = 1;
+}

@@ -48,3 +48,20 @@ cache:
     shard_count: 32
     clean_interval: 60       # 秒
 
+# ── gRPC ─────────────────────────────────────────────────────────────
+grpc:
+  host: 0.0.0.0
+  port: 9000
+  mode: debug                          # debug（开启 reflection）/ release
+  max_recv_msg_size_mb: 4
+  max_send_msg_size_mb: 4
+  max_conn_age_sec: 300                # 单个连接最大存活时间（秒）
+  max_conn_age_grace_sec: 5            # 超过 max_conn_age 后的宽限期（秒）
+  keepalive_time_sec: 60               # Keepalive ping 间隔
+  keepalive_timeout_sec: 20            # Keepalive 超时
+
+  # TLS（可选，留空则不启用）
+  tls:
+    cert_file: ""
+    key_file: ""
+

@@ -7,6 +7,7 @@ import (
 	"github.com/zhoudm1743/go-fast/framework/facades"
 	"github.com/zhoudm1743/go-fast/framework/filesystem"
 	"github.com/zhoudm1743/go-fast/framework/foundation"
+	gogrpc "github.com/zhoudm1743/go-fast/framework/gRPC"
 	gohttp "github.com/zhoudm1743/go-fast/framework/http"
 	"github.com/zhoudm1743/go-fast/framework/log"
 	"github.com/zhoudm1743/go-fast/framework/validation"
@@ -37,6 +38,6 @@ func providers() []foundation.ServiceProvider {
 		&filesystem.ServiceProvider{}, // 5. 文件系统
 		&validation.ServiceProvider{}, // 6. 验证器
 		&gohttp.ServiceProvider{},     // 7. HTTP 路由
-		// 业务方可在此追加自定义 Provider
+		&gogrpc.ServiceProvider{},     // 8. gRPC 服务器
 	}
 }
