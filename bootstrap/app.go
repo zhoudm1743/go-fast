@@ -5,9 +5,10 @@ import (
 	"github.com/zhoudm1743/go-fast/framework/config"
 	"github.com/zhoudm1743/go-fast/framework/database"
 	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast/framework/fast"
 	"github.com/zhoudm1743/go-fast/framework/filesystem"
 	"github.com/zhoudm1743/go-fast/framework/foundation"
-	gogrpc "github.com/zhoudm1743/go-fast/framework/gRPC"
+	gogrpc "github.com/zhoudm1743/go-fast/framework/grpc"
 	gohttp "github.com/zhoudm1743/go-fast/framework/http"
 	"github.com/zhoudm1743/go-fast/framework/log"
 	"github.com/zhoudm1743/go-fast/framework/validation"
@@ -24,6 +25,9 @@ func Boot() foundation.Application {
 
 	facades.SetApp(app)
 
+	// 注册所有控制台命令到 Fast 内核
+	facades.Fast().Register(Commands())
+
 	return app
 }
 
@@ -34,10 +38,12 @@ func providers() []foundation.ServiceProvider {
 		&config.ServiceProvider{},     // 1. 配置
 		&log.ServiceProvider{},        // 2. 日志
 		&cache.ServiceProvider{},      // 3. 缓存
+		&fast.ServiceProvider{},       // 9. 控制台
 		&database.ServiceProvider{},   // 4. 数据库
 		&filesystem.ServiceProvider{}, // 5. 文件系统
 		&validation.ServiceProvider{}, // 6. 验证器
 		&gohttp.ServiceProvider{},     // 7. HTTP 路由
 		&gogrpc.ServiceProvider{},     // 8. gRPC 服务器
+
 	}
 }

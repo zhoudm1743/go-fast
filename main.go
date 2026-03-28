@@ -17,31 +17,39 @@ func main() {
 
 	fmt.Printf("[GoFast] v%s booted\n", app.Version())
 
-	// 2. 注册路由（HTTP + gRPC）
+	// 2. Fast 控制台模式：go run . fast [command] [args]
+	if len(os.Args) > 1 && os.Args[1] == "fast" {
+		if err := facades.Fast().Run(os.Args[2:]); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
+
+	// 3. 注册路由（HTTP + gRPC）
 	routes.Register()
 	routes.RegisterGRPC()
 
-	// 3. 启动 HTTP 服务器（协程，非阻塞）
+	// 4. 启动 HTTP 服务器（协程，非阻塞）
 	go func() {
 		if err := facades.Route().Run(); err != nil {
 			facades.Log().Errorf("server error: %v", err)
 		}
 	}()
 
-	// 4. 启动 gRPC 服务器（协程，非阻塞）
-	go func() {
-		if err := facades.GRPC().Run(); err != nil {
-			facades.Log().Errorf("grpc server error: %v", err)
-		}
-	}()
+	// 5. 启动 gRPC 服务器（协程，非阻塞）
+	// go func() {
+	// 	if err := facades.GRPC().Run(); err != nil {
+	// 		facades.Log().Errorf("grpc server error: %v", err)
+	// 	}
+	// }()
 
-	// 5. 等待退出信号
+	// 6. 等待退出信号
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	fmt.Println("\n[GoFast] shutting down...")
 
-	// 6. 优雅关闭（HTTP + gRPC 均通过 OnShutdown 钩子关闭）
+	// 7. 优雅关闭（HTTP + gRPC 均通过 OnShutdown 钩子关闭）
 	app.Shutdown()
 }

@@ -51,5 +51,12 @@ func (v *validatorImpl) Validate(obj any) error {
 }
 
 func (v *validatorImpl) RegisterRule(rule any) error {
+	type registrationFuncer interface {
+		Rule() string
+		RegistrationFunc() validator.Func
+	}
+	if r, ok := rule.(registrationFuncer); ok {
+		return v.validate.RegisterValidation(r.Rule(), r.RegistrationFunc())
+	}
 	return nil
 }
