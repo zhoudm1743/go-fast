@@ -15,7 +15,7 @@ func main() {
 	// 1. 创建并引导应用（注册所有 Provider → Register → Boot）
 	app := bootstrap.Boot()
 
-	fmt.Printf("[GoFast] v%s booted\n", app.Version())
+	// fmt.Printf("[GoFast] v%s booted\n", app.Version())
 
 	// 2. Fast 控制台模式：go run . fast [command] [args]
 	if len(os.Args) > 1 && os.Args[1] == "fast" {
@@ -27,7 +27,7 @@ func main() {
 
 	// 3. 注册路由（HTTP + gRPC）
 	routes.Register()
-	routes.RegisterGRPC()
+	// routes.RegisterGRPC()
 
 	// 4. 启动 HTTP 服务器（协程，非阻塞）
 	go func() {

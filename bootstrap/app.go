@@ -31,19 +31,18 @@ func Boot() foundation.Application {
 	return app
 }
 
-// providers 返回内置服务提供者列表。
+// providers 返回服务提供者列表。
 // 顺序即 Register → Boot 的执行顺序，请确保依赖在前。
 func providers() []foundation.ServiceProvider {
 	return []foundation.ServiceProvider{
 		&config.ServiceProvider{},     // 1. 配置
 		&log.ServiceProvider{},        // 2. 日志
 		&cache.ServiceProvider{},      // 3. 缓存
-		&fast.ServiceProvider{},       // 9. 控制台
 		&database.ServiceProvider{},   // 4. 数据库
 		&filesystem.ServiceProvider{}, // 5. 文件系统
 		&validation.ServiceProvider{}, // 6. 验证器
 		&gohttp.ServiceProvider{},     // 7. HTTP 路由
 		&gogrpc.ServiceProvider{},     // 8. gRPC 服务器
-
+		&fast.ServiceProvider{},       // 9. 控制台
 	}
 }
