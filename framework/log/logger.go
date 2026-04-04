@@ -24,6 +24,27 @@ type logEntry struct {
 	entry *logrus.Entry
 }
 
+func callerFields(file string, line int, ok bool) logrus.Fields {
+	callerFile := shorten(file, ok)
+	return logrus.Fields{
+		"caller_file": callerFile,
+		"caller_line": line,
+		"caller":      fmt.Sprintf("%s:%d", callerFile, line),
+	}
+}
+
+func (e *logEntry) withCaller(level logrus.Level, args ...any) {
+	_, file, line, ok := runtime.Caller(2)
+	entry := e.entry.WithFields(callerFields(file, line, ok))
+	entry.Log(level, args...)
+}
+
+func (e *logEntry) withCallerf(level logrus.Level, format string, args ...any) {
+	_, file, line, ok := runtime.Caller(2)
+	entry := e.entry.WithFields(callerFields(file, line, ok))
+	entry.Logf(level, format, args...)
+}
+
 // NewLogger 根据配置创建 Logger 实例。
 func NewLogger(cfg contracts.Config) (contracts.Log, error) {
 	l := logrus.New()
@@ -39,7 +60,8 @@ func NewLogger(cfg contracts.Config) (contracts.Log, error) {
 		level = logrus.InfoLevel
 	}
 	l.SetLevel(level)
-	l.SetReportCaller(true)
+	// Caller is recorded by withCaller/withCallerf to avoid wrapper stack offset.
+	l.SetReportCaller(false)
 
 	format := cfg.GetString("log.format", "color")
 	switch format {
@@ -48,11 +70,12 @@ func NewLogger(cfg contracts.Config) (contracts.Log, error) {
 			TimestampFormat: "2006-01-02 15:04:05",
 		})
 	default:
-		l.SetFormatter(&logrus.TextFormatter{
+		textFormatter := &logrus.TextFormatter{
 			TimestampFormat: "2006-01-02 15:04:05",
 			ForceColors:     format == "color",
 			FullTimestamp:   true,
-		})
+		}
+		l.SetFormatter(&twoLineConsoleFormatter{base: textFormatter})
 	}
 
 	l.SetOutput(os.Stdout)
@@ -90,6 +113,45 @@ type fileHook struct {
 	formatter logrus.Formatter
 }
 
+// twoLineConsoleFormatter prints caller on a dedicated line for easier click-to-open.
+type twoLineConsoleFormatter struct {
+	base logrus.Formatter
+}
+
+func (f *twoLineConsoleFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	caller, ok := entry.Data["caller"].(string)
+	if !ok || caller == "" {
+		return f.base.Format(entry)
+	}
+
+	data := make(logrus.Fields, len(entry.Data))
+	for k, v := range entry.Data {
+		switch k {
+		case "caller", "caller_file", "caller_line":
+			continue
+		default:
+			data[k] = v
+		}
+	}
+
+	clone := &logrus.Entry{
+		Logger:  entry.Logger,
+		Data:    data,
+		Time:    entry.Time,
+		Level:   entry.Level,
+		Message: entry.Message,
+		Context: entry.Context,
+		Caller:  entry.Caller,
+	}
+
+	body, err := f.base.Format(clone)
+	if err != nil {
+		return nil, err
+	}
+
+	return append([]byte(caller+"\n"), body...), nil
+}
+
 func (h *fileHook) Levels() []logrus.Level { return logrus.AllLevels }
 func (h *fileHook) Fire(entry *logrus.Entry) error {
 	b, err := h.formatter.Format(entry)
@@ -102,13 +164,13 @@ func (h *fileHook) Fire(entry *logrus.Entry) error {
 
 func (l *logger) withCaller(level logrus.Level, args ...any) {
 	_, file, line, ok := runtime.Caller(2)
-	entry := l.instance.WithField("caller_file", shorten(file, ok)).WithField("caller_line", line)
+	entry := l.instance.WithFields(callerFields(file, line, ok))
 	entry.Log(level, args...)
 }
 
 func (l *logger) withCallerf(level logrus.Level, format string, args ...any) {
 	_, file, line, ok := runtime.Caller(2)
-	entry := l.instance.WithField("caller_file", shorten(file, ok)).WithField("caller_line", line)
+	entry := l.instance.WithFields(callerFields(file, line, ok))
 	entry.Logf(level, format, args...)
 }
 
@@ -116,7 +178,7 @@ func shorten(file string, ok bool) string {
 	if !ok {
 		return "unknown"
 	}
-	return filepath.Base(file)
+	return filepath.ToSlash(filepath.Clean(file))
 }
 
 func (l *logger) Debug(args ...any) { l.withCaller(logrus.DebugLevel, args...) }
@@ -143,14 +205,22 @@ func (l *logger) WithFields(fields map[string]any) contracts.Log {
 	return &logEntry{entry: l.instance.WithFields(fields)}
 }
 
-func (e *logEntry) Debug(args ...any)                 { e.entry.Debug(args...) }
-func (e *logEntry) Debugf(format string, args ...any) { e.entry.Debugf(format, args...) }
-func (e *logEntry) Info(args ...any)                  { e.entry.Info(args...) }
-func (e *logEntry) Infof(format string, args ...any)  { e.entry.Infof(format, args...) }
-func (e *logEntry) Warn(args ...any)                  { e.entry.Warn(args...) }
-func (e *logEntry) Warnf(format string, args ...any)  { e.entry.Warnf(format, args...) }
-func (e *logEntry) Error(args ...any)                 { e.entry.Error(args...) }
-func (e *logEntry) Errorf(format string, args ...any) { e.entry.Errorf(format, args...) }
+func (e *logEntry) Debug(args ...any) { e.withCaller(logrus.DebugLevel, args...) }
+func (e *logEntry) Debugf(format string, args ...any) {
+	e.withCallerf(logrus.DebugLevel, format, args...)
+}
+func (e *logEntry) Info(args ...any) { e.withCaller(logrus.InfoLevel, args...) }
+func (e *logEntry) Infof(format string, args ...any) {
+	e.withCallerf(logrus.InfoLevel, format, args...)
+}
+func (e *logEntry) Warn(args ...any) { e.withCaller(logrus.WarnLevel, args...) }
+func (e *logEntry) Warnf(format string, args ...any) {
+	e.withCallerf(logrus.WarnLevel, format, args...)
+}
+func (e *logEntry) Error(args ...any) { e.withCaller(logrus.ErrorLevel, args...) }
+func (e *logEntry) Errorf(format string, args ...any) {
+	e.withCallerf(logrus.ErrorLevel, format, args...)
+}
 func (e *logEntry) Fatal(args ...any)                 { e.entry.Fatal(args...) }
 func (e *logEntry) Fatalf(format string, args ...any) { e.entry.Fatalf(format, args...) }
 func (e *logEntry) Panic(args ...any)                 { e.entry.Panic(args...) }
