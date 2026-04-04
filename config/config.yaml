@@ -1,6 +1,7 @@
 # ── 服务器 ──────────────────────────────────────
 server:
   name: GoFast
+  driver: gin              # fiber / gin
   host: 0.0.0.0
   port: 3000
   mode: debug                # debug / release

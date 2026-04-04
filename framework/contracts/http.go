@@ -59,6 +59,13 @@ type Context interface {
 	// 验证失败时返回包含字段错误信息的 error。
 	Bind(obj any) error
 
+	// ── 文件与存储 ─────────────────────────────────
+
+	// Storage 返回文件存储服务（供 Response.File / Response.Download 使用）。
+	Storage() Storage
+	// SendFile 直接从文件系统绝对路径发送文件响应（由底层驱动实现）。
+	SendFile(path string) error
+
 	// ── 响应发送 ──────────────────────────────────
 
 	// JSON 以 JSON 格式发送响应，code 为 HTTP 状态码。
