@@ -51,7 +51,7 @@ func NewGormDriver(cfg contracts.ConnectionConfig, log contracts.Log) (*GormDriv
 		gormCfg.NamingStrategy = gormSchema.NamingStrategy{
 			TablePrefix: cfg.TablePrefix,
 		}
-}
+	}
 
 	var db *gorm.DB
 	var err error

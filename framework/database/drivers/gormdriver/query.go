@@ -53,7 +53,7 @@ func (q *GormQuery) Model(value any) contracts.Query {
 		// 通过 gorm.Statement.Parse 解析 model 对应的裸表名，再加上 schema 前缀。
 		stmt := &gorm.Statement{DB: q.db}
 		if err := stmt.Parse(value); err == nil && stmt.Table != "" && !strings.Contains(stmt.Table, ".") {
-			return q.wrap(q.db.Table(q.schema+"."+stmt.Table).Model(value))
+			return q.wrap(q.db.Table(q.schema + "." + stmt.Table).Model(value))
 		}
 	}
 	return q.wrap(q.db.Model(value))

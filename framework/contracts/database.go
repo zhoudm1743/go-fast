@@ -145,4 +145,3 @@ type AfterDeleter interface {
 type AfterFinder interface {
 	AfterFind(q Query) error
 }
-
