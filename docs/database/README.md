@@ -1,7 +1,7 @@
 # GoFast 数据库
 
 <p align="center">
-  <strong>与 ORM 无关 · 开箱即用 · 可插拔驱动 · 多连接管理</strong>
+  <strong>与 ORM 无关 · 开箱即用 · 可插拔驱动 · 多连接管理 · PostgreSQL Schema</strong>
 </p>
 
 <p align="center">
@@ -18,6 +18,7 @@
 
 - 🔌 **可插拔驱动** — 内置 GORM，可无缝切换 xorm / torm，业务代码零改动
 - 🔗 **多连接管理** — 同时管理主库、只读副本、多租户等多个命名连接，懒加载初始化
+- 🗂️ **PostgreSQL Schema** — 连接级 `schema` 配置 + 链式 `.Schema(name)` 动态切换，多租户 Schema 隔离开箱即用
 - ⛓️ **流畅链式 API** — `Where / Order / Paginate / Scopes` 等方法链式组合，直观易读
 - 📄 **分页内置** — `Paginate(page, size)` 一行搞定，自动计算 OFFSET
 - 🔄 **事务完善** — 自动事务、手动事务、SavePoint、隔离级别全支持

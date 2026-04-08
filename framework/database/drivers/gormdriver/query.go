@@ -3,6 +3,7 @@ package gormdriver
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 
@@ -13,73 +14,103 @@ import (
 // GormQuery 将 contracts.Query 的每个方法代理到 *gorm.DB。
 // 所有链式方法返回新的 GormQuery 实例，保持不可变。
 type GormQuery struct {
-	db *gorm.DB
+	db     *gorm.DB
+	schema string // 动态 schema 前缀，主要用于 PostgreSQL 多 schema 场景
 }
 
 var _ contracts.Query = (*GormQuery)(nil)
 
+// wrap 创建新的 GormQuery，传入新的 *gorm.DB，并保留当前 schema。
+func (q *GormQuery) wrap(db *gorm.DB) *GormQuery {
+	return &GormQuery{db: db, schema: q.schema}
+}
+
+// schemaTable 在 schema 非空且 name 中不含 "." 时自动加上 "schema." 前缀。
+func (q *GormQuery) schemaTable(name string) string {
+	if q.schema != "" && !strings.Contains(name, ".") {
+		return q.schema + "." + name
+	}
+	return name
+}
+
+// ── 调试／Schema ─────────────────────────────────────────────────────
+
+// Schema 在当前查询链上设置动态 schema（主要用于 PostgreSQL）。
+// 后续的 Model()/Table() 调用将自动在表名前加上 "schema." 前缀。
+// 示例：facades.DB().Connection("pg").Schema("analytics").Model(&Event{}).Find(&events)
+func (q *GormQuery) Schema(name string) contracts.Query {
+	return &GormQuery{db: q.db, schema: name}
+}
+
 // ── 构建条件 ─────────────────────────────────────────────────────────
 
 func (q *GormQuery) Table(name string) contracts.Query {
-	return &GormQuery{db: q.db.Table(name)}
+	return q.wrap(q.db.Table(q.schemaTable(name)))
 }
 
 func (q *GormQuery) Model(value any) contracts.Query {
-	return &GormQuery{db: q.db.Model(value)}
+	if q.schema != "" {
+		// 通过 gorm.Statement.Parse 解析 model 对应的裸表名，再加上 schema 前缀。
+		stmt := &gorm.Statement{DB: q.db}
+		if err := stmt.Parse(value); err == nil && stmt.Table != "" && !strings.Contains(stmt.Table, ".") {
+			return q.wrap(q.db.Table(q.schema+"."+stmt.Table).Model(value))
+		}
+	}
+	return q.wrap(q.db.Model(value))
 }
 
 func (q *GormQuery) Select(query any, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Select(query, args...)}
+	return q.wrap(q.db.Select(query, args...))
 }
 
 func (q *GormQuery) Omit(columns ...string) contracts.Query {
-	return &GormQuery{db: q.db.Omit(columns...)}
+	return q.wrap(q.db.Omit(columns...))
 }
 
 func (q *GormQuery) Where(query any, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Where(query, args...)}
+	return q.wrap(q.db.Where(query, args...))
 }
 
 func (q *GormQuery) OrWhere(query any, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Or(query, args...)}
+	return q.wrap(q.db.Or(query, args...))
 }
 
 func (q *GormQuery) Not(query any, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Not(query, args...)}
+	return q.wrap(q.db.Not(query, args...))
 }
 
 func (q *GormQuery) Order(value any) contracts.Query {
-	return &GormQuery{db: q.db.Order(value)}
+	return q.wrap(q.db.Order(value))
 }
 
 func (q *GormQuery) Limit(limit int) contracts.Query {
-	return &GormQuery{db: q.db.Limit(limit)}
+	return q.wrap(q.db.Limit(limit))
 }
 
 func (q *GormQuery) Offset(offset int) contracts.Query {
-	return &GormQuery{db: q.db.Offset(offset)}
+	return q.wrap(q.db.Offset(offset))
 }
 
 func (q *GormQuery) Group(name string) contracts.Query {
-	return &GormQuery{db: q.db.Group(name)}
+	return q.wrap(q.db.Group(name))
 }
 
 func (q *GormQuery) Having(query any, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Having(query, args...)}
+	return q.wrap(q.db.Having(query, args...))
 }
 
 func (q *GormQuery) Distinct(args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Distinct(args...)}
+	return q.wrap(q.db.Distinct(args...))
 }
 
 // ── 关联 ─────────────────────────────────────────────────────────────
 
 func (q *GormQuery) Joins(query string, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Joins(query, args...)}
+	return q.wrap(q.db.Joins(query, args...))
 }
 
 func (q *GormQuery) Preload(query string, args ...any) contracts.Query {
-	return &GormQuery{db: q.db.Preload(query, args...)}
+	return q.wrap(q.db.Preload(query, args...))
 }
 
 // ── 终结方法 ─────────────────────────────────────────────────────────
@@ -188,7 +219,7 @@ func (q *GormQuery) SaveResult(value any) contracts.Result {
 // ── 原生 SQL ─────────────────────────────────────────────────────────
 
 func (q *GormQuery) Raw(sql string, values ...any) contracts.Query {
-	return &GormQuery{db: q.db.Raw(sql, values...)}
+	return q.wrap(q.db.Raw(sql, values...))
 }
 
 func (q *GormQuery) Exec(sql string, values ...any) error {
@@ -200,7 +231,7 @@ func (q *GormQuery) Exec(sql string, values ...any) error {
 func (q *GormQuery) Transaction(fc func(tx contracts.Query) error, opts ...contracts.TxOption) error {
 	txOpts := parseTxOptions(opts...)
 	return wrapError(q.db.Transaction(func(tx *gorm.DB) error {
-		return fc(&GormQuery{db: tx})
+		return fc(q.wrap(tx))
 	}, txOpts))
 }
 
@@ -212,7 +243,7 @@ func (q *GormQuery) Begin(opts ...contracts.TxOption) contracts.Query {
 	} else {
 		tx = q.db.Begin()
 	}
-	return &GormQuery{db: tx}
+	return q.wrap(tx)
 }
 
 func (q *GormQuery) Commit() error {
@@ -240,7 +271,7 @@ func (q *GormQuery) Paginate(page, size int) contracts.Query {
 	if size < 1 {
 		size = 20
 	}
-	return &GormQuery{db: q.db.Offset((page - 1) * size).Limit(size)}
+	return q.wrap(q.db.Offset((page - 1) * size).Limit(size))
 }
 
 // ── 作用域 ───────────────────────────────────────────────────────────
@@ -250,26 +281,26 @@ func (q *GormQuery) Scopes(funcs ...func(contracts.Query) contracts.Query) contr
 	for _, fn := range funcs {
 		fn := fn
 		gormScopes = append(gormScopes, func(db *gorm.DB) *gorm.DB {
-			result := fn(&GormQuery{db: db})
+			result := fn(q.wrap(db))
 			if gq, ok := result.(*GormQuery); ok {
 				return gq.db
 			}
 			return db
 		})
 	}
-	return &GormQuery{db: q.db.Scopes(gormScopes...)}
+	return q.wrap(q.db.Scopes(gormScopes...))
 }
 
 // ── 上下文 ───────────────────────────────────────────────────────────
 
 func (q *GormQuery) WithContext(ctx context.Context) contracts.Query {
-	return &GormQuery{db: q.db.WithContext(ctx)}
+	return q.wrap(q.db.WithContext(ctx))
 }
 
-// ── 调试 ─────────────────────────────────────────────────────────────
+// ── 调试 ─────────────────────────────────────────────────────
 
 func (q *GormQuery) Debug() contracts.Query {
-	return &GormQuery{db: q.db.Debug()}
+	return q.wrap(q.db.Debug())
 }
 
 // ── 悲观锁 ───────────────────────────────────────────────────────────
@@ -277,22 +308,22 @@ func (q *GormQuery) Debug() contracts.Query {
 func (q *GormQuery) Lock(mode contracts.LockMode) contracts.Query {
 	switch mode {
 	case contracts.LockForUpdate:
-		return &GormQuery{db: q.db.Clauses(clause.Locking{Strength: "UPDATE"})}
+		return q.wrap(q.db.Clauses(clause.Locking{Strength: "UPDATE"}))
 	case contracts.LockShareMode:
-		return &GormQuery{db: q.db.Clauses(clause.Locking{Strength: "SHARE"})}
+		return q.wrap(q.db.Clauses(clause.Locking{Strength: "SHARE"}))
 	default:
 		return q
 	}
 }
 
-// ── 软删除扩展 ───────────────────────────────────────────────────────
+// ── 软删除扩展 ───────────────────────────────────────────────────
 
 func (q *GormQuery) Unscoped() contracts.Query {
-	return &GormQuery{db: q.db.Unscoped()}
+	return q.wrap(q.db.Unscoped())
 }
 
 func (q *GormQuery) OnlyTrashed() contracts.Query {
-	return &GormQuery{db: q.db.Unscoped().Where("deleted_at != 0")}
+	return q.wrap(q.db.Unscoped().Where("deleted_at != 0"))
 }
 
 func (q *GormQuery) Restore() error {
@@ -315,7 +346,7 @@ func (q *GormQuery) FirstOrInit(dest any, conds ...any) error {
 
 func (q *GormQuery) FindInBatches(dest any, batchSize int, fc func(tx contracts.Query, batch int) error) error {
 	return wrapError(q.db.FindInBatches(dest, batchSize, func(tx *gorm.DB, batch int) error {
-		return fc(&GormQuery{db: tx}, batch)
+		return fc(q.wrap(tx), batch)
 	}).Error)
 }
 

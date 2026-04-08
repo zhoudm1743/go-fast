@@ -83,6 +83,7 @@ func (m *dbManager) readConnectionConfig(prefix string) ConnectionConfig {
 		Username:        m.cfg.GetString(prefix+".username"),
 		Password:        m.cfg.GetString(prefix+".password"),
 		Database:        m.cfg.GetString(prefix+".database"),
+		Schema:          m.cfg.GetString(prefix+".schema"),
 		Charset:         m.cfg.GetString(prefix+".charset"),
 		Loc:             m.cfg.GetString(prefix+".loc"),
 		SSLMode:         m.cfg.GetString(prefix+".ssl_mode"),

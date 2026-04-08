@@ -13,6 +13,7 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 	gormLogger "gorm.io/gorm/logger"
+	gormSchema "gorm.io/gorm/schema"
 )
 
 // GormDriver 实现 contracts.Driver
@@ -32,6 +33,25 @@ func NewGormDriver(cfg contracts.ConnectionConfig, log contracts.Log) (*GormDriv
 	}
 
 	gormCfg := buildGormConfig(cfg, log)
+
+	// 当配置了 Schema（主要用于 PostgreSQL）时，设置 GORM NamingStrategy，
+	// 使 AutoMigrate 和所有 GORM 生成的 SQL 都自动携带 "schema." 前缀。
+	// search_path 已在 DSN 中设置，两者并行，互不冲突：
+	//   - search_path：保证原始 SQL（Exec/Raw）及 PostgreSQL 内部（外键等）正确路由
+	//   - NamingStrategy.TablePrefix：保证 GORM 结构化查询和 AutoMigrate 在正确 schema 建表
+	if cfg.Schema != "" {
+		tablePrefix := cfg.Schema + "."
+		if cfg.TablePrefix != "" {
+			tablePrefix = cfg.Schema + "." + cfg.TablePrefix
+		}
+		gormCfg.NamingStrategy = gormSchema.NamingStrategy{
+			TablePrefix: tablePrefix,
+		}
+	} else if cfg.TablePrefix != "" {
+		gormCfg.NamingStrategy = gormSchema.NamingStrategy{
+			TablePrefix: cfg.TablePrefix,
+		}
+}
 
 	var db *gorm.DB
 	var err error

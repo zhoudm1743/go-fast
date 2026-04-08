@@ -25,6 +25,12 @@ type ConnectionConfig struct {
 	Loc      string `mapstructure:"loc"`      // 时区，默认 Local
 	SSLMode  string `mapstructure:"ssl_mode"` // postgres: disable|require|verify-full
 
+	// ── Schema（主要用于 PostgreSQL）──────────────────────────
+	// Schema 设置 PostgreSQL 的 search_path（同时作为 GORM NamingStrategy.TablePrefix 的 schema 前缀）。
+	// 其他引擎忽略此字段。
+	// 示例："public"、"analytics"、"tenant_001"
+	Schema string `mapstructure:"schema"`
+
 	// ── 表前缀 ──────────────────────────────────────────────
 	TablePrefix string `mapstructure:"table_prefix"`
 
@@ -63,8 +69,12 @@ func (c *ConnectionConfig) BuildDSN() string {
 		if sslMode == "" {
 			sslMode = "disable"
 		}
-		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
+		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
 			c.Host, c.Port, c.Username, c.Password, c.Database, sslMode, loc)
+		if c.Schema != "" {
+			dsn += " search_path=" + c.Schema
+		}
+		return dsn
 	case "sqlite", "sqlite3":
 		return fmt.Sprintf("file:%s?cache=shared&_journal_mode=WAL&_foreign_keys=1&_busy_timeout=5000",
 			c.Database)

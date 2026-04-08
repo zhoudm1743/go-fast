@@ -171,6 +171,12 @@ type Query interface {
 	// ── 调试 ────────────────────────────────────────────────
 	Debug() Query
 
+	// ── Schema 切换（主要用于 PostgreSQL 多 schema 场景）──────
+	// 在当前查询上设置 schema，后续的 Model()/Table() 会自动加上该前缀。
+	// 连续调用以最后一次为准。
+	// 示例：facades.DB().Connection("pg").Schema("analytics").Model(&Event{}).Find(&events)
+	Schema(name string) Query
+
 	// ── 悲观锁 ──────────────────────────────────────────────
 	Lock(mode LockMode) Query
 

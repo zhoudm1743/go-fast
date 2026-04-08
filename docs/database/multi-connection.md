@@ -37,6 +37,17 @@ database:
       username: analyst
       password: secret
       database: analytics_db
+      schema: analytics        # 连接级 schema，AutoMigrate 和所有查询自动使用此 schema
+
+    analytics_raw:
+      driver: gormdriver
+      engine: postgres
+      host: 10.0.0.3
+      port: 5432
+      username: analyst
+      password: secret
+      database: analytics_db
+      # 不设置 schema，通过 .Schema() 动态切换
 
     cache_db:
       driver: gormdriver
@@ -103,6 +114,146 @@ func (s *UserService) List(page, size int) ([]models.User, int64, error) {
     return users, total, err
 }
 ```
+
+---
+
+## PostgreSQL 多 Schema
+
+PostgreSQL 支持在同一个数据库实例内按 schema（命名空间）隔离表，GoFast 提供两种控制方式。
+
+### 方式一：连接级 schema（推荐用于固定 schema）
+
+在连接配置中声明 `schema`，该连接上的所有查询和 `AutoMigrate` 均自动使用该 schema：
+
+```yaml
+database:
+  default: main
+  connections:
+    # 业务库：使用 public schema（默认）
+    main:
+      driver: gormdriver
+      engine: postgres
+      host: 127.0.0.1
+      port: 5432
+      database: myapp
+      username: postgres
+      password: secret
+      schema: public
+
+    # 数据分析库：使用 analytics schema
+    analytics:
+      driver: gormdriver
+      engine: postgres
+      host: 127.0.0.1
+      port: 5432
+      database: myapp
+      username: analyst
+      password: secret
+      schema: analytics        # AutoMigrate 自动在 analytics schema 建表
+
+    # 多租户：每个租户独立 schema
+    tenant_acme:
+      driver: gormdriver
+      engine: postgres
+      host: 127.0.0.1
+      port: 5432
+      database: myapp
+      username: postgres
+      password: secret
+      schema: acme
+```
+
+```go
+// AutoMigrate 在 analytics schema 下建表
+facades.DB().Driver("analytics").AutoMigrate(&analytics.Event{})
+// → CREATE TABLE analytics.events (...)
+
+// 查询时自动带上 schema 前缀
+facades.DB().Connection("analytics").Model(&analytics.Event{}).Find(&events)
+// → SELECT * FROM analytics.events
+```
+
+### 方式二：动态 schema（推荐用于多租户）
+
+在默认连接（或任意连接）上调用 `.Schema(name)` 临时切换，不影响连接池配置：
+
+```go
+// 同一连接，按请求动态路由到不同 schema
+tenantSchema := "tenant_" + tenantID
+
+facades.DB().Connection("pg").Schema(tenantSchema).
+    Model(&models.Order{}).
+    Where("status = ?", "pending").
+    Find(&orders)
+// → SELECT * FROM tenant_acme.orders WHERE status = 'pending'
+
+// 也可和 Table() 一起用（Schema() 不会重复添加前缀）
+facades.DB().Connection("pg").Schema(tenantSchema).Table("logs").
+    Where("level = ?", "error").Find(&logs)
+// → SELECT * FROM tenant_acme.logs WHERE level = 'error'
+```
+
+> `.Schema()` 的优先级说明：
+> - `Schema(name).Table("tbl")` → `name.tbl`（Schema 中不含 `.` 的表名会加前缀）
+> - `Schema(name).Table("other.tbl")` → `other.tbl`（表名已含 `.`，不重复添加）
+> - `Schema(name).Model(&T{})` → GORM 解析 T 的表名后加上 `name.` 前缀
+
+### 多租户 Middleware 示例
+
+```go
+// middleware/tenant.go
+func TenantMiddleware(ctx contracts.Context) error {
+    tenantID := ctx.Header("X-Tenant-ID")
+    if tenantID == "" {
+        return ctx.Response().BadRequest("missing X-Tenant-ID")
+    }
+    ctx.WithValue("tenant_schema", "tenant_"+tenantID)
+    return ctx.Next()
+}
+
+// controller 中使用
+func (c *OrderController) Index(ctx contracts.Context) error {
+    schema := ctx.Value("tenant_schema").(string)
+
+    var orders []models.Order
+    err := facades.DB().Connection("pg").Schema(schema).
+        Where("status = ?", "active").
+        Order("created_at DESC").
+        Find(&orders)
+    if err != nil {
+        return ctx.Response().Error(err)
+    }
+    return ctx.Response().Success(orders)
+}
+```
+
+### AutoMigrate 多 Schema
+
+```go
+func (p *DatabaseProvider) MigrateDB(db contracts.DB) error {
+    tenants := []string{"acme", "globex", "initech"}
+    for _, name := range tenants {
+        schema := "tenant_" + name
+        // 先确保 schema 存在
+        db.Connection("pg").Exec("CREATE SCHEMA IF NOT EXISTS " + schema)
+        // 在该 schema 下迁移表结构
+        if err := db.Driver("pg").(interface {
+            AutoMigrateInSchema(schema string, models ...any) error
+        }).AutoMigrateInSchema(schema,
+            &models.Order{},
+            &models.Product{},
+        ); err != nil {
+            // 降级：用 Schema().Exec 手动建表，或使用连接级 schema 连接
+            tmpDB := db.Connection("pg").Schema(schema)
+            _ = tmpDB.Exec("-- 在 " + schema + " 下初始化...")
+        }
+    }
+    return nil
+}
+```
+
+> **注意**：`AutoMigrate` 绑定在驱动（`Driver`）层，目前不直接支持运行时动态切换 schema 迁移。  
+> 推荐做法是为每个需要迁移的 schema 创建独立的命名连接（配置 `schema` 字段），然后调用 `db.Driver("connection_name").AutoMigrate(...)`。
 
 ---
 
@@ -248,7 +399,11 @@ func (p *DatabaseProvider) MigrateDB(db contracts.DB) error {
 
 ## 多租户场景
 
-按租户动态路由到不同数据库：
+GoFast 支持两种多租户隔离模式，可按需选择。
+
+### 模式一：独立数据库（每租户一个连接）
+
+适合强隔离要求，各租户数据库物理分离：
 
 ```go
 // middleware/tenant.go
@@ -286,5 +441,48 @@ connections:
     host: 10.0.1.2
 ```
 
+### 模式二：PostgreSQL Schema 隔离（每租户一个 schema）
+
+适合中等规模租户，共享同一个 PostgreSQL 数据库实例，成本更低：
+
+```go
+// middleware/tenant.go
+func TenantMiddleware(ctx contracts.Context) error {
+    tenantID := ctx.Header("X-Tenant-ID")
+    if tenantID == "" {
+        return ctx.Response().BadRequest("missing X-Tenant-ID")
+    }
+    ctx.WithValue("tenant_schema", "tenant_"+tenantID)
+    return ctx.Next()
+}
+
+// controller 中使用
+func (c *PostController) Index(ctx contracts.Context) error {
+    schema := ctx.Value("tenant_schema").(string)
+
+    var posts []models.Post
+    facades.DB().Connection("pg").Schema(schema).Find(&posts)
+    // → SELECT * FROM tenant_acme.posts
+
+    return ctx.Response().Success(posts)
+}
+```
+
+配置中只需一个共享 PostgreSQL 连接（无需为每个租户声明连接）：
+
+```yaml
+connections:
+  pg:
+    driver: gormdriver
+    engine: postgres
+    host: 127.0.0.1
+    port: 5432
+    database: myapp
+    username: postgres
+    password: secret
+    # 不设置 schema，由业务层通过 .Schema() 动态注入
+```
+
 > 连接采用**懒加载**机制，首次使用时才建立，不会在启动时耗尽连接池。
+
 

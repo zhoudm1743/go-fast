@@ -115,7 +115,13 @@ connections:
     database: myapp
     ssl_mode: disable           # disable | require | verify-full
     loc: Local
+    schema: public              # 可选，设置默认 search_path，省略则不设置
 ```
+
+> **`schema` 字段**：
+> - 会将 `search_path=<schema>` 写入 DSN，所有原生 SQL（`Exec`/`Raw`）默认在该 schema 下执行
+> - 同时配置 GORM `NamingStrategy`，使 `AutoMigrate` 和 GORM 结构化查询自动带上 `schema.` 前缀
+> - 若同时含有 `table_prefix`，实际前缀为 `schema.table_prefix`
 
 ### SQL Server
 
@@ -193,6 +199,9 @@ q := facades.DB().Query()
 
 // 获取指定连接的查询构建器
 q := facades.DB().Connection("read_replica")
+
+// PostgreSQL：动态切换 schema（对连接级 schema 的有益补充）
+q := facades.DB().Connection("pg").Schema("analytics")
 
 // 获取底层驱动（逃生口，不推荐常规使用）
 driver := facades.DB().Driver()          // 默认连接
