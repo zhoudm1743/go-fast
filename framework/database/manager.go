@@ -193,3 +193,22 @@ func (m *dbManager) Close() error {
 	m.connections = make(map[string]contracts.Driver)
 	return lastErr
 }
+
+// Register 在运行时动态注册一个命名连接（多租户场景）。
+// 若同名连接已存在，先关闭旧连接再替换。
+func (m *dbManager) Register(name string, cfg contracts.ConnectionConfig) error {
+	cfg.ApplyDefaults()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// 关闭旧连接（如有）
+	if old, ok := m.connections[name]; ok {
+		_ = old.Close()
+		delete(m.connections, name)
+	}
+
+	// 存入配置，等待首次使用时懒加载
+	m.connConfigs[name] = cfg
+	return nil
+}

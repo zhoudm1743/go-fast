@@ -229,4 +229,7 @@ type DB interface {
 	Ping() error
 	// Close 关闭所有连接
 	Close() error
+	// Register 在运行时动态注册一个命名连接（多租户场景使用）。
+	// 若同名连接已存在，则关闭旧连接并替换。
+	Register(name string, cfg ConnectionConfig) error
 }

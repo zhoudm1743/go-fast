@@ -10,6 +10,7 @@ import (
 	"github.com/zhoudm1743/go-fast/framework/foundation"
 	gogrpc "github.com/zhoudm1743/go-fast/framework/grpc"
 	gohttp "github.com/zhoudm1743/go-fast/framework/http"
+	gojwt "github.com/zhoudm1743/go-fast/framework/jwt"
 	"github.com/zhoudm1743/go-fast/framework/log"
 	"github.com/zhoudm1743/go-fast/framework/validation"
 )
@@ -41,8 +42,9 @@ func providers() []foundation.ServiceProvider {
 		&database.ServiceProvider{},   // 4. 数据库
 		&filesystem.ServiceProvider{}, // 5. 文件系统
 		&validation.ServiceProvider{}, // 6. 验证器
-		&gohttp.ServiceProvider{},     // 7. HTTP 路由
-		&gogrpc.ServiceProvider{},     // 8. gRPC 服务器
-		&fast.ServiceProvider{},       // 9. 控制台
+		&gojwt.ServiceProvider{},      // 7. JWT
+		&gohttp.ServiceProvider{},     // 8. HTTP 路由
+		&gogrpc.ServiceProvider{},     // 9. gRPC 服务器
+		&fast.ServiceProvider{},       // 10. 控制台
 	}
 }

@@ -10,5 +10,6 @@ import (
 func Commands() []contracts.ConsoleCommand {
 	return []contracts.ConsoleCommand{
 		&commands.ExampleCommand{},
+		&commands.SeedCommand{},
 	}
 }
