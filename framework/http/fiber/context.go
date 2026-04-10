@@ -100,11 +100,11 @@ func (ctx *Context) SetHeader(key, value string) contracts.Context {
 // ── 上下文存储 ──────────────────────────────────────────────────────
 
 func (ctx *Context) Value(key string) any {
-	return ctx.store[key]
+	return ctx.c.Locals(key)
 }
 
 func (ctx *Context) WithValue(key string, value any) contracts.Context {
-	ctx.store[key] = value
+	ctx.c.Locals(key, value)
 	return ctx
 }
 
@@ -181,6 +181,3 @@ func setFieldFromString(fv reflect.Value, val string) {
 		}
 	}
 }
-
-
-

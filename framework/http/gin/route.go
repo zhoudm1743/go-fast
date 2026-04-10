@@ -154,6 +154,8 @@ func (r *route) Group(prefix string, args ...any) contracts.Route {
 		switch v := arg.(type) {
 		case contracts.HandlerFunc:
 			ginGroup.Use(r.wrap(v))
+		case func(contracts.Context) error:
+			ginGroup.Use(r.wrap(v))
 		case func(contracts.Route):
 			callback = v
 		}

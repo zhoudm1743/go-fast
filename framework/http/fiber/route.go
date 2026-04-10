@@ -140,6 +140,8 @@ func (r *route) Group(prefix string, args ...any) contracts.Route {
 
 	for _, arg := range args {
 		switch v := arg.(type) {
+		case func(contracts.Context) error:
+			group.Use(v)
 		case contracts.HandlerFunc:
 			group.Use(v)
 		case func(contracts.Route):
