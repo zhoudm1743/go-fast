@@ -7,20 +7,20 @@ import (
 )
 
 // Model 基础模型，所有业务模型应嵌入此结构体。
-// ID 为 UUID v7 字符串主键，由框架层 BeforeCreate Hook 自动生成。
+// ID 为 UUID v7 字符串主键，由框架层驱动在 Create 前自动调用 AutoGenerateID() 生成。
 type Model struct {
 	ID        string `gorm:"primaryKey;size:36;column:id"      xorm:"pk varchar(36) 'id'"    json:"id"`
 	CreatedAt int64  `gorm:"autoCreateTime;column:created_at"  xorm:"created 'created_at'"   json:"created_at"`
 	UpdatedAt int64  `gorm:"autoUpdateTime;column:updated_at"  xorm:"updated 'updated_at'"   json:"updated_at"`
 }
 
-// BeforeCreate 框架层 Hook：创建前自动生成 UUID v7 主键。
-// 各 ORM 驱动在 Create 前检查目标对象是否实现 contracts.BeforeCreator，如有则调用。
-func (m *Model) BeforeCreate(_ contracts.Query) error {
+// AutoGenerateID 实现 contracts.IDAutoGenerator。
+// 驱动层在 Create 前调用，方法名不与 GORM/xorm 任何内置 Hook 冲突，
+// 因此不会触发 GORM 的签名不匹配警告。
+func (m *Model) AutoGenerateID() {
 	if m.ID == "" {
 		m.ID = uuid.Must(uuid.NewV7()).String()
 	}
-	return nil
 }
 
 // ModelWithSoftDelete 带软删除的基础模型。

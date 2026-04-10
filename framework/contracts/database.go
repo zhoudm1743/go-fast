@@ -110,38 +110,48 @@ func (c *ConnectionConfig) ApplyDefaults() {
 
 // ── Model Hook 接口 ──────────────────────────────────────────────────
 // 各 ORM 驱动在执行相应操作前后，检测目标模型是否实现这些接口并调用。
+// 方法名统一使用 On 前缀（OnBeforeCreate/OnAfterCreate 等），避免与 GORM/xorm 等
+// ORM 框架的内置 Hook 方法名冲突，消除签名不匹配警告。
+
+// IDAutoGenerator 主键自动生成接口。
+// database.Model 实现此接口以生成 UUID v7 主键。
+// 驱动层在 Create 前调用 AutoGenerateID()，独立于 ORM 框架，方法名不与任何 ORM 的
+// 内置 Hook 冲突（GORM 只识别 BeforeCreate(*gorm.DB)，不会扫描此方法）。
+type IDAutoGenerator interface {
+	AutoGenerateID()
+}
 
 // BeforeCreator 创建前钩子
 type BeforeCreator interface {
-	BeforeCreate(q Query) error
+	OnBeforeCreate(q Query) error
 }
 
 // AfterCreator 创建后钩子
 type AfterCreator interface {
-	AfterCreate(q Query) error
+	OnAfterCreate(q Query) error
 }
 
 // BeforeUpdater 更新前钩子
 type BeforeUpdater interface {
-	BeforeUpdate(q Query) error
+	OnBeforeUpdate(q Query) error
 }
 
 // AfterUpdater 更新后钩子
 type AfterUpdater interface {
-	AfterUpdate(q Query) error
+	OnAfterUpdate(q Query) error
 }
 
 // BeforeDeleter 删除前钩子
 type BeforeDeleter interface {
-	BeforeDelete(q Query) error
+	OnBeforeDelete(q Query) error
 }
 
 // AfterDeleter 删除后钩子
 type AfterDeleter interface {
-	AfterDelete(q Query) error
+	OnAfterDelete(q Query) error
 }
 
 // AfterFinder 查询后钩子
 type AfterFinder interface {
-	AfterFind(q Query) error
+	OnAfterFind(q Query) error
 }

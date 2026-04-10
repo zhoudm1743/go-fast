@@ -3,6 +3,7 @@ package gormdriver
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"strings"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
@@ -132,10 +133,8 @@ func (q *GormQuery) Take(dest any, conds ...any) error {
 }
 
 func (q *GormQuery) Create(value any) error {
-	if bc, ok := value.(contracts.BeforeCreator); ok {
-		if err := bc.BeforeCreate(q); err != nil {
-			return err
-		}
+	if err := invokeBeforeCreate(q, value); err != nil {
+		return err
 	}
 	return wrapError(q.db.Create(value).Error)
 }
@@ -187,10 +186,8 @@ func (q *GormQuery) Rows() (contracts.Rows, error) {
 // ── 写操作 Result 变体 ──────────────────────────────────────────────
 
 func (q *GormQuery) CreateResult(value any) contracts.Result {
-	if bc, ok := value.(contracts.BeforeCreator); ok {
-		if err := bc.BeforeCreate(q); err != nil {
-			return contracts.Result{Error: err}
-		}
+	if err := invokeBeforeCreate(q, value); err != nil {
+		return contracts.Result{Error: err}
 	}
 	tx := q.db.Create(value)
 	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
@@ -404,6 +401,63 @@ func parseTxOptions(opts ...contracts.TxOption) *sql.TxOptions {
 				ReadOnly:  std.ReadOnly,
 			}
 		}
+	}
+	return nil
+}
+
+// invokeBeforeCreate 对 value 调用 BeforeCreate Hook。
+// 支持以下传入形式：
+//   - *T（单条记录指针）
+//   - []T 或 *[]T（批量记录，逐条调用）
+//   - []*T 或 *[]*T（批量记录指针，逐条调用）
+//
+// 调用顺序：
+//  1. contracts.IDAutoGenerator.AutoGenerateID() —— 自动生成主键，方法名不与任何 ORM Hook 冲突
+//  2. contracts.BeforeCreator.BeforeCreate(q)    —— 业务自定义创建前逻辑
+func invokeBeforeCreate(q contracts.Query, value any) error {
+	// 直接实现接口：最常见的 *T 路径，快速返回
+	if handled := callBeforeCreateOnValue(q, value); handled != nil {
+		return handled
+	}
+
+	// 用 reflect 处理切片/切片指针场景
+	rv := reflect.ValueOf(value)
+	// 解引用外层指针（*[]T → []T）
+	for rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil
+		}
+		rv = rv.Elem()
+	}
+	if rv.Kind() != reflect.Slice {
+		return nil
+	}
+	for i := 0; i < rv.Len(); i++ {
+		elem := rv.Index(i)
+		// 获取可寻址的指针以便接口匹配（[]T → &T）
+		var iface any
+		if elem.Kind() == reflect.Ptr {
+			iface = elem.Interface()
+		} else if elem.CanAddr() {
+			iface = elem.Addr().Interface()
+		} else {
+			continue
+		}
+		if err := callBeforeCreateOnValue(q, iface); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// callBeforeCreateOnValue 对单个对象调用 IDAutoGenerator 和 BeforeCreator。
+// 返回 nil 表示没有错误（包含"未实现接口"的情况）。
+func callBeforeCreateOnValue(q contracts.Query, iface any) error {
+	if ag, ok := iface.(contracts.IDAutoGenerator); ok {
+		ag.AutoGenerateID()
+	}
+	if bc, ok := iface.(contracts.BeforeCreator); ok {
+		return bc.OnBeforeCreate(q)
 	}
 	return nil
 }
