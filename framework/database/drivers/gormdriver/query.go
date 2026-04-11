@@ -43,6 +43,19 @@ func (q *GormQuery) Schema(name string) contracts.Query {
 	return &GormQuery{db: q.db, schema: name}
 }
 
+// applySchema 在终结方法（First/Find/Create 等）执行前，
+// 如果设置了 schema 且 dest 是可解析的 GORM model，
+// 则自动在 db 上调用 Table(schema.tableName)。
+func (q *GormQuery) applySchema(dest any) *gorm.DB {
+	if q.schema != "" && dest != nil {
+		stmt := &gorm.Statement{DB: q.db}
+		if err := stmt.Parse(dest); err == nil && stmt.Table != "" && !strings.Contains(stmt.Table, ".") {
+			return q.db.Table(q.schema + "." + stmt.Table)
+		}
+	}
+	return q.db
+}
+
 // ── 构建条件 ─────────────────────────────────────────────────────────
 
 func (q *GormQuery) Table(name string) contracts.Query {
@@ -117,34 +130,34 @@ func (q *GormQuery) Preload(query string, args ...any) contracts.Query {
 // ── 终结方法 ─────────────────────────────────────────────────────────
 
 func (q *GormQuery) Find(dest any, conds ...any) error {
-	return wrapError(q.db.Find(dest, conds...).Error)
+	return wrapError(q.applySchema(dest).Find(dest, conds...).Error)
 }
 
 func (q *GormQuery) First(dest any, conds ...any) error {
-	return wrapError(q.db.First(dest, conds...).Error)
+	return wrapError(q.applySchema(dest).First(dest, conds...).Error)
 }
 
 func (q *GormQuery) Last(dest any, conds ...any) error {
-	return wrapError(q.db.Last(dest, conds...).Error)
+	return wrapError(q.applySchema(dest).Last(dest, conds...).Error)
 }
 
 func (q *GormQuery) Take(dest any, conds ...any) error {
-	return wrapError(q.db.Take(dest, conds...).Error)
+	return wrapError(q.applySchema(dest).Take(dest, conds...).Error)
 }
 
 func (q *GormQuery) Create(value any) error {
 	if err := invokeBeforeCreate(q, value); err != nil {
 		return err
 	}
-	return wrapError(q.db.Create(value).Error)
+	return wrapError(q.applySchema(value).Create(value).Error)
 }
 
 func (q *GormQuery) CreateInBatches(value any, batchSize int) error {
-	return wrapError(q.db.CreateInBatches(value, batchSize).Error)
+	return wrapError(q.applySchema(value).CreateInBatches(value, batchSize).Error)
 }
 
 func (q *GormQuery) Save(value any) error {
-	return wrapError(q.db.Save(value).Error)
+	return wrapError(q.applySchema(value).Save(value).Error)
 }
 
 func (q *GormQuery) Update(column string, value any) error {
@@ -156,7 +169,7 @@ func (q *GormQuery) Updates(values any) error {
 }
 
 func (q *GormQuery) Delete(value any, conds ...any) error {
-	return wrapError(q.db.Delete(value, conds...).Error)
+	return wrapError(q.applySchema(value).Delete(value, conds...).Error)
 }
 
 func (q *GormQuery) Count(count *int64) error {
@@ -189,7 +202,7 @@ func (q *GormQuery) CreateResult(value any) contracts.Result {
 	if err := invokeBeforeCreate(q, value); err != nil {
 		return contracts.Result{Error: err}
 	}
-	tx := q.db.Create(value)
+	tx := q.applySchema(value).Create(value)
 	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
 }
 
@@ -204,12 +217,12 @@ func (q *GormQuery) UpdatesResult(values any) contracts.Result {
 }
 
 func (q *GormQuery) DeleteResult(value any, conds ...any) contracts.Result {
-	tx := q.db.Delete(value, conds...)
+	tx := q.applySchema(value).Delete(value, conds...)
 	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
 }
 
 func (q *GormQuery) SaveResult(value any) contracts.Result {
-	tx := q.db.Save(value)
+	tx := q.applySchema(value).Save(value)
 	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
 }
 

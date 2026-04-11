@@ -69,8 +69,13 @@ func (c *ConnectionConfig) BuildDSN() string {
 		if sslMode == "" {
 			sslMode = "disable"
 		}
+		// PostgreSQL 不支持 "Local" 作为 TimeZone 值，使用真实时区名
+		pgTimeZone := c.Loc
+		if pgTimeZone == "" || pgTimeZone == "Local" {
+			pgTimeZone = "Asia/Shanghai"
+		}
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
-			c.Host, c.Port, c.Username, c.Password, c.Database, sslMode, loc)
+			c.Host, c.Port, c.Username, c.Password, c.Database, sslMode, pgTimeZone)
 		if c.Schema != "" {
 			dsn += " search_path=" + c.Schema
 		}
