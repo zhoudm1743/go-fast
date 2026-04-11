@@ -145,6 +145,11 @@ func (ctx *Context) AbortWithJson(code int, obj any) error {
 	return nil
 }
 
+// Underlying 返回底层 *gin.Context，用于 SSE 等高级场景。
+func (ctx *Context) Underlying() any {
+	return ctx.c
+}
+
 // ── 内部：Query 参数绑定（使用 `query` tag，与 Fiber 保持一致）──────
 
 func bindQuery(obj any, queryFn func(key string) string) {

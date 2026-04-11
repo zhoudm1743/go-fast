@@ -126,6 +126,11 @@ func (ctx *Context) AbortWithJson(code int, obj any) error {
 	return ctx.c.Status(code).JSON(obj)
 }
 
+// Underlying 返回底层 *fiber.Ctx，用于 SSE 等高级场景。
+func (ctx *Context) Underlying() any {
+	return ctx.c
+}
+
 // ── 内部：URI 路径参数绑定 ──────────────────────────────────────────
 
 func bindURI(obj any, params func(key string, defaultValue ...string) string) {
