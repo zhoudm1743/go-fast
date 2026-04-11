@@ -43,6 +43,30 @@ func NewStorage(cfg contracts.Config) (contracts.StorageDriver, error) {
 					return nil, fmt.Errorf("[GoFast] storage: init disk %q failed: %w", name, err)
 				}
 				s.drivers[name] = d
+			case "oss":
+				d, err := newOssDriver(name, diskCfg)
+				if err != nil {
+					return nil, fmt.Errorf("[GoFast] storage: init disk %q failed: %w", name, err)
+				}
+				s.drivers[name] = d
+			case "cos":
+				d, err := newCosDriver(name, diskCfg)
+				if err != nil {
+					return nil, fmt.Errorf("[GoFast] storage: init disk %q failed: %w", name, err)
+				}
+				s.drivers[name] = d
+			case "minio":
+				d, err := newMinioDriver(name, diskCfg)
+				if err != nil {
+					return nil, fmt.Errorf("[GoFast] storage: init disk %q failed: %w", name, err)
+				}
+				s.drivers[name] = d
+			case "s3":
+				d, err := newS3Driver(name, diskCfg)
+				if err != nil {
+					return nil, fmt.Errorf("[GoFast] storage: init disk %q failed: %w", name, err)
+				}
+				s.drivers[name] = d
 			}
 		}
 	}
