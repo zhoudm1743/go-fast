@@ -4,6 +4,7 @@ import (
 	"github.com/zhoudm1743/go-fast/framework/cache"
 	"github.com/zhoudm1743/go-fast/framework/config"
 	"github.com/zhoudm1743/go-fast/framework/database"
+	goevent "github.com/zhoudm1743/go-fast/framework/event"
 	"github.com/zhoudm1743/go-fast/framework/facades"
 	"github.com/zhoudm1743/go-fast/framework/fast"
 	"github.com/zhoudm1743/go-fast/framework/filesystem"
@@ -12,6 +13,8 @@ import (
 	gohttp "github.com/zhoudm1743/go-fast/framework/http"
 	gojwt "github.com/zhoudm1743/go-fast/framework/jwt"
 	"github.com/zhoudm1743/go-fast/framework/log"
+	goqueue "github.com/zhoudm1743/go-fast/framework/queue"
+	goschedule "github.com/zhoudm1743/go-fast/framework/schedule"
 	"github.com/zhoudm1743/go-fast/framework/validation"
 )
 
@@ -46,5 +49,8 @@ func providers() []foundation.ServiceProvider {
 		&gohttp.ServiceProvider{},     // 8. HTTP 路由
 		&gogrpc.ServiceProvider{},     // 9. gRPC 服务器
 		&fast.ServiceProvider{},       // 10. 控制台
+		&goevent.ServiceProvider{},    // 11. 事件系统
+		&goqueue.ServiceProvider{},    // 12. 队列系统
+		&goschedule.ServiceProvider{}, // 13. 任务调度
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	redisStore "github.com/zhoudm1743/go-fast/framework/cache/redis_store"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
@@ -25,6 +26,21 @@ func NewCacheManager(cfg contracts.Config) (contracts.Cache, error) {
 	}
 
 	m.stores["memory"] = NewMemoryStore(shardCount, time.Duration(gcSec)*time.Second)
+
+	// 如果配置了 Redis，初始化 Redis store
+	if cfg.GetString("cache.redis.host", "") != "" || defaultStore == "redis" {
+		redisCfg := redisStore.Config{
+			Host:     cfg.GetString("cache.redis.host", "127.0.0.1"),
+			Port:     cfg.GetInt("cache.redis.port", 6379),
+			Password: cfg.GetString("cache.redis.password", ""),
+			DB:       cfg.GetInt("cache.redis.db", 0),
+			Prefix:   cfg.GetString("cache.redis.prefix", ""),
+		}
+		rs, err := redisStore.New(redisCfg)
+		if err == nil {
+			m.stores["redis"] = rs
+		}
+	}
 
 	return m, nil
 }
