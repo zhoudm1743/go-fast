@@ -14,6 +14,10 @@ type Model struct {
 	UpdatedAt int64  `gorm:"autoUpdateTime;column:updated_at"  xorm:"updated 'updated_at'"   json:"updated_at"`
 }
 
+type SoftDelete struct {
+	DeletedAt int64 `gorm:"column:deleted_at;index;default:0" xorm:"'deleted_at' index default(0)" json:"deleted_at"`
+}
+
 // AutoGenerateID 实现 contracts.IDAutoGenerator。
 // 驱动层在 Create 前调用，方法名不与 GORM/xorm 任何内置 Hook 冲突，
 // 因此不会触发 GORM 的签名不匹配警告。
