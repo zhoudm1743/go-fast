@@ -59,6 +59,12 @@ type Context interface {
 	// 验证失败时返回包含字段错误信息的 error。
 	Bind(obj any) error
 
+	// ── 文件上传 ───────────────────────────────────
+
+	// Files 返回 multipart 表单中指定 key 的所有上传文件，兼容单文件与多文件。
+	// 返回的每个 File 均可直接调用 Store / StoreAs 持久化到任意 Storage 磁盘。
+	Files(key string) ([]File, error)
+
 	// ── 文件与存储 ─────────────────────────────────
 
 	// Storage 返回文件存储服务（供 Response.File / Response.Download 使用）。

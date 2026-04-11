@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/filesystem"
 	"github.com/zhoudm1743/go-fast/framework/http/base"
 )
 
@@ -70,6 +71,20 @@ func (ctx *Context) Bind(obj any) error {
 // ── 文件与存储 ────────────────────────────────────────────────────────
 
 func (ctx *Context) Storage() contracts.Storage { return ctx.storage }
+
+// Files 返回 multipart 表单中指定 key 的所有上传文件，兼容单文件和多文件。
+func (ctx *Context) Files(key string) ([]contracts.File, error) {
+	form, err := ctx.c.MultipartForm()
+	if err != nil {
+		return nil, err
+	}
+	headers := form.File[key]
+	files := make([]contracts.File, len(headers))
+	for i, h := range headers {
+		files[i] = filesystem.NewUploadedFile(h, ctx.storage)
+	}
+	return files, nil
+}
 
 func (ctx *Context) SendFile(path string) error { return ctx.c.SendFile(path) }
 

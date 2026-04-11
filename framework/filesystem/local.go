@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
@@ -40,11 +41,42 @@ func (d *localDriver) Put(file, content string) error {
 }
 
 func (d *localDriver) PutFile(path string, source contracts.File) (string, error) {
-	return source.Store(path)
+	ext, err := source.Extension()
+	if err != nil {
+		return "", err
+	}
+	name := uuid.New().String()
+	if ext != "" {
+		name = name + "." + ext
+	}
+	return d.copyFromSource(path, name, source.File())
 }
 
 func (d *localDriver) PutFileAs(path string, source contracts.File, name string) (string, error) {
-	return source.StoreAs(path, name)
+	return d.copyFromSource(path, name, source.File())
+}
+
+// copyFromSource 将 src 文件拷贝到 root/dir/name，返回相对路径 dir/name。
+func (d *localDriver) copyFromSource(dir, name, src string) (string, error) {
+	rel := filepath.ToSlash(filepath.Join(dir, name))
+	dst := d.fullPath(rel)
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return "", err
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return "", err
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return "", err
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil {
+		return "", err
+	}
+	return rel, nil
 }
 
 func (d *localDriver) Get(file string) (string, error) {
