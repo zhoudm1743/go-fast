@@ -72,6 +72,14 @@ func (ctx *Context) Bind(obj any) error {
 
 func (ctx *Context) Storage() contracts.Storage { return ctx.storage }
 
+func (ctx *Context) File(key string) (contracts.File, error) {
+	header, err := ctx.c.FormFile(key)
+	if err != nil {
+		return nil, err
+	}
+	return filesystem.NewUploadedFile(header, ctx.storage), nil
+}
+
 // Files 返回 multipart 表单中指定 key 的所有上传文件，兼容单文件和多文件。
 func (ctx *Context) Files(key string) ([]contracts.File, error) {
 	form, err := ctx.c.MultipartForm()
