@@ -2,8 +2,7 @@ package database
 
 import (
 	"github.com/zhoudm1743/go-fast/framework/contracts"
-
-	"github.com/google/uuid"
+	"github.com/zhoudm1743/go-fast/framework/id"
 )
 
 // Model 基础模型，所有业务模型应嵌入此结构体。
@@ -23,7 +22,7 @@ type SoftDelete struct {
 // 因此不会触发 GORM 的签名不匹配警告。
 func (m *Model) AutoGenerateID() {
 	if m.ID == "" {
-		m.ID = uuid.Must(uuid.NewV7()).String()
+		m.ID = id.New()
 	}
 }
 
