@@ -27,7 +27,7 @@
 package view
 
 import (
-	"errors"
+	"fmt"
 	"html/template"
 	"io"
 	"io/fs"
@@ -40,15 +40,18 @@ import (
 )
 
 // Engine 是基于 html/template 的模板渲染引擎。
+//
+// 每个页面文件拥有独立的 template.Template 集合（包含 layout/ 目录下的所有布局
+// 文件 + 该页面文件本身），从而避免不同页面的同名 {{define "content"}} 互相覆盖。
 type Engine struct {
 	mu      sync.RWMutex
-	tmpl    *template.Template
-	dir     string           // 模板根目录（磁盘路径 或 fs.FS 内的根路径）
-	ext     string           // 过滤的文件扩展名，例如 ".html"
-	funcMap template.FuncMap // 自定义模板函数
-	loaded  bool             // 模板是否已加载
-	reload  bool             // 是否每次 Render 都重新加载（开发模式）
-	fsys    fs.FS            // 非 nil 时从该 FS 加载（用于 go:embed）
+	pages   map[string]*template.Template // 每个页面独立的模板集合
+	dir     string                        // 模板根目录（磁盘路径 或 fs.FS 内的根路径）
+	ext     string                        // 过滤的文件扩展名，例如 ".html"
+	funcMap template.FuncMap              // 自定义模板函数
+	loaded  bool                          // 模板是否已加载
+	reload  bool                          // 是否每次 Render 都重新加载（开发模式）
+	fsys    fs.FS                         // 非 nil 时从该 FS 加载（用于 go:embed）
 }
 
 // Option 是 Engine 配置选项函数。
@@ -137,47 +140,43 @@ func (e *Engine) Load() error {
 }
 
 // load 必须在持有写锁的情况下调用。
+//
+// 实现策略：
+//  1. 收集所有模板文件的内容（rel → content）。
+//  2. 将 layout/ 目录内的文件识别为"公共布局"。
+//  3. 对 其余每个 页面文件，创建独立的 *template.Template：
+//     先解析所有布局文件，再解析该页面文件。
+//     这样各页面的 {{define "content"}} 互不干扰。
 func (e *Engine) load() error {
-	root := template.New("").Funcs(e.funcMap)
-
+	// Step 1: 收集所有文件内容
+	contents := make(map[string]string) // rel path → content
 	if e.fsys != nil {
-		// ── embed / fs.FS 模式 ──────────────────────────────
 		err := fs.WalkDir(e.fsys, e.dir, func(path string, d fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
+			if walkErr != nil || d.IsDir() {
 				return walkErr
-			}
-			if d.IsDir() {
-				return nil
 			}
 			if e.ext != "" && !strings.HasSuffix(path, e.ext) {
 				return nil
 			}
-			// 模板名 = 去掉根前缀，统一使用 "/"
 			rel := path
 			prefix := e.dir
 			if prefix != "." && prefix != "" {
 				rel = strings.TrimPrefix(path, prefix+"/")
 			}
-			content, err := fs.ReadFile(e.fsys, path)
+			b, err := fs.ReadFile(e.fsys, path)
 			if err != nil {
 				return err
 			}
-			if _, err = root.New(rel).Parse(string(content)); err != nil {
-				return err
-			}
+			contents[rel] = string(b)
 			return nil
 		})
 		if err != nil {
 			return err
 		}
 	} else {
-		// ── 磁盘模式 ──────────────────────────────────────
 		err := filepath.WalkDir(e.dir, func(path string, d os.DirEntry, walkErr error) error {
-			if walkErr != nil {
+			if walkErr != nil || d.IsDir() {
 				return walkErr
-			}
-			if d.IsDir() {
-				return nil
 			}
 			if e.ext != "" && filepath.Ext(path) != e.ext {
 				return nil
@@ -187,13 +186,11 @@ func (e *Engine) load() error {
 				return err
 			}
 			rel = filepath.ToSlash(rel)
-			content, err := os.ReadFile(path)
+			b, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
-			if _, err = root.New(rel).Parse(string(content)); err != nil {
-				return err
-			}
+			contents[rel] = string(b)
 			return nil
 		})
 		if err != nil {
@@ -201,7 +198,35 @@ func (e *Engine) load() error {
 		}
 	}
 
-	e.tmpl = root
+	// Step 2: 将 layout/ 目录内的文件识别为公共布局
+	var layoutFiles []string
+	var pageFiles []string
+	for rel := range contents {
+		if strings.HasPrefix(rel, "layout/") {
+			layoutFiles = append(layoutFiles, rel)
+		} else {
+			pageFiles = append(pageFiles, rel)
+		}
+	}
+
+	// Step 3: 为每个页面文件建立独立的 template.Template 集合
+	pages := make(map[string]*template.Template, len(pageFiles))
+	for _, name := range pageFiles {
+		t := template.New("").Funcs(e.funcMap)
+		// 先解析所有布局文件
+		for _, lf := range layoutFiles {
+			if _, err := t.New(lf).Parse(contents[lf]); err != nil {
+				return fmt.Errorf("view: parse layout %q: %w", lf, err)
+			}
+		}
+		// 再解析该页面文件（其 {{define}} 块只注册在本 set 中）
+		if _, err := t.New(name).Parse(contents[name]); err != nil {
+			return fmt.Errorf("view: parse template %q: %w", name, err)
+		}
+		pages[name] = t
+	}
+
+	e.pages = pages
 	e.loaded = true
 	return nil
 }
@@ -219,9 +244,12 @@ func (e *Engine) Render(w io.Writer, name string, data any) error {
 			e.mu.Unlock()
 			return err
 		}
-		tmpl := e.tmpl
+		t := e.pages[name]
 		e.mu.Unlock()
-		return tmpl.ExecuteTemplate(w, name, data)
+		if t == nil {
+			return fmt.Errorf("view: template %q not found", name)
+		}
+		return t.ExecuteTemplate(w, name, data)
 	}
 
 	// 惰性加载：首次 Render 时才解析
@@ -242,11 +270,11 @@ func (e *Engine) Render(w io.Writer, name string, data any) error {
 	}
 
 	e.mu.RLock()
-	tmpl := e.tmpl
+	t := e.pages[name]
 	e.mu.RUnlock()
 
-	if tmpl == nil {
-		return errors.New("view: no templates loaded")
+	if t == nil {
+		return fmt.Errorf("view: template %q not found", name)
 	}
-	return tmpl.ExecuteTemplate(w, name, data)
+	return t.ExecuteTemplate(w, name, data)
 }
