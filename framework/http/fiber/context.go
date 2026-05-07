@@ -1,6 +1,8 @@
 package fiber
 
 import (
+	"bytes"
+	"errors"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,15 +16,16 @@ import (
 // Context 实现 contracts.Context，内部包装 *fiber.Ctx。
 // 应用代码只见 contracts.Context，不感知 Fiber。
 type Context struct {
-	c         *fiber.Ctx
-	store     map[string]any
-	validator contracts.Validation
-	storage   contracts.Storage
+	c          *fiber.Ctx
+	store      map[string]any
+	validator  contracts.Validation
+	storage    contracts.Storage
+	viewEngine contracts.ViewEngine
 }
 
 // NewContext 创建 Fiber 上下文包装器。
-func NewContext(c *fiber.Ctx, v contracts.Validation, s contracts.Storage) *Context {
-	return &Context{c: c, store: make(map[string]any), validator: v, storage: s}
+func NewContext(c *fiber.Ctx, v contracts.Validation, s contracts.Storage, ve contracts.ViewEngine) *Context {
+	return &Context{c: c, store: make(map[string]any), validator: v, storage: s, viewEngine: ve}
 }
 
 // ── 请求读取 ────────────────────────────────────────────────────────
@@ -106,6 +109,20 @@ func (ctx *Context) String(code int, s string) error {
 	return ctx.c.Status(code).SendString(s)
 }
 
+// HTML 渲染 HTML 模板并发送响应。
+// name 为相对于模板目录的路径，例如 "home/index.html"。
+func (ctx *Context) HTML(code int, name string, data any) error {
+	if ctx.viewEngine == nil {
+		return errors.New("view: no view engine configured, please register view.ServiceProvider")
+	}
+	var buf bytes.Buffer
+	if err := ctx.viewEngine.Render(&buf, name, data); err != nil {
+		return err
+	}
+	ctx.c.Status(code).Set(fiber.HeaderContentType, "text/html; charset=utf-8")
+	return ctx.c.Send(buf.Bytes())
+}
+
 func (ctx *Context) Response() contracts.Response {
 	return base.NewResponse(ctx)
 }
@@ -152,6 +169,34 @@ func (ctx *Context) AbortWithJson(code int, obj any) error {
 // Underlying 返回底层 *fiber.Ctx，用于 SSE 等高级场景。
 func (ctx *Context) Underlying() any {
 	return ctx.c
+}
+
+// ── Cookie ──────────────────────────────────────────────────────────
+
+func (ctx *Context) Cookie(name string) string {
+	return ctx.c.Cookies(name)
+}
+
+func (ctx *Context) SetCookie(name, value string, opts contracts.CookieOptions) {
+	path := opts.Path
+	if path == "" {
+		path = "/"
+	}
+	c := &fiber.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     path,
+		Domain:   opts.Domain,
+		MaxAge:   opts.MaxAge,
+		Secure:   opts.Secure,
+		HTTPOnly: opts.HTTPOnly,
+		SameSite: opts.SameSite,
+	}
+	ctx.c.Cookie(c)
+}
+
+func (ctx *Context) ClearCookie(name string) {
+	ctx.SetCookie(name, "", contracts.CookieOptions{MaxAge: -1, Path: "/", HTTPOnly: true})
 }
 
 // ── 内部：URI 路径参数绑定 ──────────────────────────────────────────

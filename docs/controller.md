@@ -416,7 +416,7 @@ import (
 )
 
 func RegisterAdmin() {
-    facades.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+    facades.Http.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
         admin.Register(
             &adminControllers.UserController{},
         )
@@ -437,7 +437,7 @@ import (
 )
 
 func RegisterApp() {
-    r := facades.Route()
+    r := facades.Http.Route()
 
     // 公开接口
     r.Get("/api/ping", func(ctx contracts.Context) error {
@@ -529,7 +529,7 @@ func AdminAuth(ctx contracts.Context) error {
 **组级中间件** —— 写在路由文件的 Group 上，整组共享：
 
 ```go
-facades.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+facades.Http.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
     admin.Register(&adminControllers.UserController{})
 })
 ```

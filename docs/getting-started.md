@@ -205,7 +205,7 @@ import (
 )
 
 func RegisterApp() {
-    r := facades.Route()
+    r := facades.Http.Route()
 
     // 公开接口（无需登录）
     r.Get("/api/ping", func(ctx contracts.Context) error {
@@ -234,7 +234,7 @@ import (
 )
 
 func RegisterAdmin() {
-    facades.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
+    facades.Http.Route().Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
         admin.Register(
             &adminControllers.UserController{},
         )
@@ -257,9 +257,9 @@ func Register() {
 
 ```go
 app := bootstrap.Boot()
-routes.Register()       // 注册 HTTP 路由
-routes.RegisterGRPC()   // 注册 gRPC 服务
-facades.Route().Run()   // 启动 HTTP 服务器
+routes.Register()             // 注册 HTTP 路由
+routes.RegisterGRPC()         // 注册 gRPC 服务
+facades.Http.Route().Run()    // 启动 HTTP 服务器
 // gRPC 服务器已在协程中启动（facades.GRPC().Run()）
 ```
 
@@ -295,7 +295,7 @@ facades.Storage().Put("hello.txt", "world")
 content, _ := facades.Storage().Get("hello.txt")
 
 // 验证
-err := facades.Validator().Validate(input)
+err := facades.Http.Validator().Validate(input)
 
 // gRPC Server
 facades.GRPC().RegisterService(&userpb.UserService_ServiceDesc, &services.UserServiceServer{})

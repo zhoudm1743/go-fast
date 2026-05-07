@@ -1,0 +1,108 @@
+/* GoFast Admin — 演示样式 */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f0f2f5;
+  color: #333;
+  min-height: 100vh;
+}
+
+/* ── 顶部导航 ─────────────────────────────── */
+.navbar {
+  background: #1a1f2e;
+  color: #fff;
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+}
+.navbar .brand {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: #7c9dff;
+  text-decoration: none;
+}
+.navbar nav { display: flex; gap: 4px; margin-left: auto; }
+.navbar nav a {
+  color: #b0b8d1;
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: .9rem;
+  transition: background .15s, color .15s;
+}
+.navbar nav a:hover, .navbar nav a.active {
+  background: rgba(124,157,255,.15);
+  color: #7c9dff;
+}
+
+/* ── 主内容区 ─────────────────────────────── */
+.container { max-width: 1200px; margin: 32px auto; padding: 0 24px; }
+
+h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 24px; color: #1a1f2e; }
+
+/* ── 统计卡片 ─────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; margin-bottom: 32px; }
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card .label { font-size: .8rem; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+.card .value { font-size: 2rem; font-weight: 700; color: #1a1f2e; }
+.card .trend { font-size: .8rem; color: #52c41a; }
+.card.blue  .value { color: #4f7cff; }
+.card.green .value { color: #52c41a; }
+.card.amber .value { color: #faad14; }
+.card.red   .value { color: #ff4d4f; }
+
+/* ── 表格 ─────────────────────────────────── */
+.table-wrap {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+.table-wrap table { width: 100%; border-collapse: collapse; }
+.table-wrap th {
+  background: #fafafa;
+  padding: 12px 16px;
+  font-size: .8rem;
+  color: #888;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid #eee;
+}
+.table-wrap td {
+  padding: 13px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: .9rem;
+}
+.table-wrap tr:last-child td { border-bottom: none; }
+.table-wrap tr:hover td { background: #fafbff; }
+
+/* ── 徽章 ─────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.badge.active { background: #f6ffed; color: #52c41a; }
+.badge.inactive { background: #fff2f0; color: #ff4d4f; }
+
+/* ── 空状态 ─────────────────────────────────── */
+.empty { text-align: center; padding: 48px; color: #aaa; font-size: .9rem; }

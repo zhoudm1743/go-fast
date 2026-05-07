@@ -13,13 +13,14 @@ import (
 
 // route 实现 contracts.Route，封装 Gin。
 type route struct {
-	engine    *gin.Engine
-	router    gin.IRouter
-	cfg       contracts.Config
-	validator contracts.Validation
-	storage   contracts.Storage
-	log       contracts.Log
-	server    *http.Server
+	engine     *gin.Engine
+	router     gin.IRouter
+	cfg        contracts.Config
+	validator  contracts.Validation
+	storage    contracts.Storage
+	log        contracts.Log
+	server     *http.Server
+	viewEngine contracts.ViewEngine
 }
 
 // NewRoute 创建基于 Gin 的 HTTP 路由服务实例。
@@ -72,6 +73,11 @@ func NewRoute(cfg contracts.Config, validator contracts.Validation, storage cont
 		log:       log,
 	}
 	return r, nil
+}
+
+// SetViewEngine 将 HTML 模板引擎注入路由，后续每个请求上下文将持有该引擎引用。
+func (r *route) SetViewEngine(ve contracts.ViewEngine) {
+	r.viewEngine = ve
 }
 
 func (r *route) Run(addr ...string) error {
@@ -139,13 +145,14 @@ func (r *route) Group(prefix string, args ...any) contracts.Route {
 	ginGroup := r.router.Group(prefix)
 
 	newRoute := &route{
-		engine:    r.engine,
-		router:    ginGroup,
-		cfg:       r.cfg,
-		validator: r.validator,
-		storage:   r.storage,
-		log:       r.log,
-		server:    r.server,
+		engine:     r.engine,
+		router:     ginGroup,
+		cfg:        r.cfg,
+		validator:  r.validator,
+		storage:    r.storage,
+		log:        r.log,
+		server:     r.server,
+		viewEngine: r.viewEngine,
 	}
 
 	var callback func(contracts.Route)
@@ -196,10 +203,22 @@ func (r *route) Register(controllers ...contracts.Controller) contracts.Route {
 	return r
 }
 
+// Static 从本地目录 dir 提供静态文件服务。
+func (r *route) Static(urlPrefix, dir string) contracts.Route {
+	r.router.Static(urlPrefix, dir)
+	return r
+}
+
+// StaticFS 从任意 http.FileSystem 提供静态文件服务（支持 http.FS(embed.FS)）。
+func (r *route) StaticFS(urlPrefix string, fs http.FileSystem) contracts.Route {
+	r.router.StaticFS(urlPrefix, fs)
+	return r
+}
+
 // wrap 将 contracts.HandlerFunc 转为 Gin handler。
 func (r *route) wrap(h contracts.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if err := h(NewContext(c, r.validator, r.storage)); err != nil {
+		if err := h(NewContext(c, r.validator, r.storage, r.viewEngine)); err != nil {
 			_ = c.Error(err)
 		}
 	}

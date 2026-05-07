@@ -338,8 +338,8 @@ func main() {
 
     // HTTP 服务器（非阻塞）
     go func() {
-        if err := facades.Route().Run(); err != nil {
-            facades.Log().Errorf("http server error: %v", err)
+        if err := facades.Http.Route().Run(); err != nil {
+			facades.Log().Errorf("http server error: %v", err)
         }
     }()
 
@@ -507,7 +507,7 @@ errors.Is(err, contracts.ErrDuplicatedKey)  → codes.AlreadyExists
 |------|-------------|------|
 | 服务契约 | `contracts/http.go → Route` | `contracts/grpc.go → GRPCServer` |
 | 服务提供者 | `framework/http/service_provider.go` | `framework/gRPC/service_provider.go` |
-| Facade | `facades.Route()` | `facades.GRPC()` |
+| Facade | `facades.Http.Route()` | `facades.GRPC()` |
 | 路由注册 | `routes/admin.go` `routes/app.go` | `routes/grpc.go` |
 | 中间件/拦截器 | `contracts.HandlerFunc` 链 | Unary + Stream Interceptor |
 | 控制器/服务 | `Controller` 接口 + `Boot(Route)` | `XxxServiceServer`（protoc 生成接口） |

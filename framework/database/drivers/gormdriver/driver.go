@@ -3,6 +3,9 @@ package gormdriver
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
@@ -60,6 +63,23 @@ func NewGormDriver(cfg contracts.ConnectionConfig, log contracts.Log) (*GormDriv
 	case "postgres":
 		db, err = gorm.Open(postgres.Open(dsn), gormCfg)
 	case "sqlite", "sqlite3":
+		// 自动创建数据库文件的父目录，避免 "unable to open database file"。
+		// DSN 格式为 "file:<path>?..."，提取文件路径部分。
+		dbPath := cfg.Database
+		if dbPath == "" {
+			// 从 DSN 中解析，根据 "file:" 前缀和 "?" 分隔符提取
+			raw := strings.TrimPrefix(dsn, "file:")
+			if idx := strings.Index(raw, "?"); idx != -1 {
+				dbPath = raw[:idx]
+			} else {
+				dbPath = raw
+			}
+		}
+		if dir := filepath.Dir(dbPath); dir != "." && dir != "" {
+			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
+				return nil, fmt.Errorf("[GoFast] sqlite: cannot create dir %q: %w", dir, mkErr)
+			}
+		}
 		db, err = gorm.Open(sqlite.Open(dsn), gormCfg)
 	case "mysql":
 		db, err = gorm.Open(mysql.Open(dsn), gormCfg)
