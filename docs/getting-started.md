@@ -305,14 +305,14 @@ facades.GRPC().RegisterService(&userpb.UserService_ServiceDesc, &services.UserSe
 
 ## 八、定义模型
 
-GoFast 内置 UUID v7 主键自动生成：
+GoFast 内置时序 ID 主键自动生成：
 
 ```go
 package models
 
 import "github.com/zhoudm1743/go-fast/framework/database"
 
-// User 业务模型，嵌入 database.Model 即自带 UUID v7 主键。
+// User 业务模型，嵌入 database.Model 即自带时序 ID 主键。
 type User struct {
     database.Model
     Name  string `gorm:"size:100" json:"name"`
@@ -328,7 +328,7 @@ type Article struct {
 ```
 
 `database.Model` 提供：
-- `ID` — UUID v7 字符串主键（36 位，自动生成）
+- `ID` — 时序 ID 字符串主键（16 字符，自动生成）
 - `CreatedAt` — Unix 时间戳（自动设置）
 - `UpdatedAt` — Unix 时间戳（自动更新）
 

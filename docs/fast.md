@@ -64,7 +64,7 @@ go run . fast help <command>
 
 ### `make:model`
 
-在 `app/models/` 下生成一个新模型，自动嵌入 `database.Model`（UUID v7 主键 + 时间戳）。
+在 `app/models/` 下生成一个新模型，自动嵌入 `database.Model`（时序 ID 主键 + 时间戳）。
 
 ```bash
 go run . fast make:model <Name> [--soft-delete]
@@ -93,7 +93,7 @@ package models
 import "github.com/zhoudm1743/go-fast/framework/database"
 
 // Post 模型。
-// 嵌入 database.Model 自动获得 UUID v7 主键、CreatedAt、UpdatedAt。
+// 嵌入 database.Model 自动获得时序 ID 主键、CreatedAt、UpdatedAt。
 type Post struct {
     database.Model
     // TODO: 在此添加字段

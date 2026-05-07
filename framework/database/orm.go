@@ -9,7 +9,7 @@ import (
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 
 	"github.com/glebarez/sqlite"
-	"github.com/google/uuid"
+	"github.com/zhoudm1743/go-fast/framework/id"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
@@ -211,5 +211,5 @@ func setUUIDIfEmpty(v reflect.Value) {
 	if !f.IsValid() || f.Kind() != reflect.String || f.String() != "" || !f.CanSet() {
 		return
 	}
-	f.SetString(uuid.Must(uuid.NewV7()).String())
+	f.SetString(id.New())
 }

@@ -14,11 +14,11 @@ if err := facades.DB().Query().Create(user); err != nil {
     return
 }
 
-fmt.Println(user.ID)         // 自动生成的 UUID v7，如 "018f3e2a-..."
+fmt.Println(user.ID)         // 自动生成的时序 ID，如 "01jdm4qr0s2fgk01"
 fmt.Println(user.CreatedAt)  // 自动填充的 Unix 时间戳
 ```
 
-> `Create` 会调用模型的 `BeforeCreate` 钩子，**自动生成 UUID v7 主键**。
+> `Create` 会调用模型的 `BeforeCreate` 钩子，**自动生成时序 ID 主键**。
 
 ---
 
@@ -157,7 +157,7 @@ err := facades.DB().Transaction(func(tx contracts.Query) error {
 if err := facades.DB().Query().
     Model(&models.User{}).
     Create(map[string]any{
-        "id":       uuid.Must(uuid.NewV7()).String(),
+        "id":       id.New(),
         "name":     "Dave",
         "email":    "dave@example.com",
         "password": "hashed",
@@ -166,7 +166,7 @@ if err := facades.DB().Query().
 }
 ```
 
-> ⚠️ 使用 Map 创建时，`BeforeCreate` 钩子（自动生成 UUID）**不会**自动触发，需手动设置 `id`。
+> ⚠️ 使用 Map 创建时，`BeforeCreate` 钩子（自动生成 ID）**不会**自动触发，需手动设置 `id`。
 
 ---
 

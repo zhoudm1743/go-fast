@@ -114,7 +114,7 @@ app/
 
 ## 三、定义模型
 
-模型放在 `app/models/`，嵌入 `database.Model` 自动获得 UUID v7 主键：
+模型放在 `app/models/`，嵌入 `database.Model` 自动获得时序 ID 主键：
 
 ```go
 // app/models/user.go
@@ -131,7 +131,7 @@ type User struct {
 ```
 
 `database.Model` 提供：
-- `ID` — UUID v7 字符串（自动生成，无需手动赋值）
+- `ID` — 时序 ID 字符串（16 字符，自动生成，无需手动赋值）
 - `CreatedAt` — Unix 毫秒时间戳（自动填充）
 - `UpdatedAt` — Unix 毫秒时间戳（自动更新）
 

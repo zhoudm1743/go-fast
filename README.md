@@ -14,7 +14,7 @@
 - **Facade 门面** — 一行代码访问任意服务，零样板代码
 - **配置管理** — 基于 Viper，支持 YAML + 环境变量 + 点号路径
 - **日志系统** — 基于 Logrus，支持结构化字段、文件轮转、多输出
-- **ORM 数据库** — 基于 GORM，支持 MySQL / PostgreSQL / SQLite / SQL Server，UUID v7 主键
+- **ORM 数据库** — 基于 GORM，支持 MySQL / PostgreSQL / SQLite / SQL Server，内置时序 ID 主键
 - **缓存系统** — 多 Store、标签分组、原子操作、Hash、分布式锁
 - **文件存储** — 多磁盘管理，内置本地驱动，可扩展云存储
 - **验证器** — 基于 go-playground/validator，结构体 tag 声明式验证
