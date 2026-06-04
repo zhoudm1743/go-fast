@@ -188,6 +188,12 @@ func (r *Response) Paginate(list any, total int64, page int, size int, message .
 	})
 }
 
+// View 渲染 HTML 模板并发送 HTTP 200 响应。
+// name 为相对于模板目录的路径，例如 "home/index.html"。
+func (r *Response) View(name string, data any) error {
+	return r.ctx.HTML(http.StatusOK, name, data)
+}
+
 // Errorf 便于把格式化错误快速传递给上层调用。
 func Errorf(format string, args ...any) error {
 	return fmt.Errorf(format, args...)

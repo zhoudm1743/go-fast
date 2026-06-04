@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/id"
 )
 
 type localDriver struct {
@@ -45,7 +45,7 @@ func (d *localDriver) PutFile(path string, source contracts.File) (string, error
 	if err != nil {
 		return "", err
 	}
-	name := uuid.New().String()
+	name := id.New()
 	if ext != "" {
 		name = name + "." + ext
 	}

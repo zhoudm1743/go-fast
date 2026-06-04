@@ -6,9 +6,9 @@ import (
 )
 
 // Model 基础模型，所有业务模型应嵌入此结构体。
-// ID 为 UUID v7 字符串主键，由框架层驱动在 Create 前自动调用 AutoGenerateID() 生成。
+// ID 为时序 ID 字符串主键（16 字符），由框架层驱动在 Create 前自动调用 AutoGenerateID() 生成。
 type Model struct {
-	ID        string `gorm:"primaryKey;size:36;column:id"      xorm:"pk varchar(36) 'id'"    json:"id"`
+	ID        string `gorm:"primaryKey;size:16;column:id"      xorm:"pk varchar(16) 'id'"    json:"id"`
 	CreatedAt int64  `gorm:"autoCreateTime;column:created_at"  xorm:"created 'created_at'"   json:"created_at"`
 	UpdatedAt int64  `gorm:"autoUpdateTime;column:updated_at"  xorm:"updated 'updated_at'"   json:"updated_at"`
 }

@@ -9,18 +9,20 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 // route 实现 contracts.Route，封装 Fiber。
 type route struct {
-	app       *fiber.App
-	cfg       contracts.Config
-	router    fiber.Router
-	validator contracts.Validation
-	storage   contracts.Storage
-	log       contracts.Log
+	app        *fiber.App
+	cfg        contracts.Config
+	router     fiber.Router
+	validator  contracts.Validation
+	storage    contracts.Storage
+	log        contracts.Log
+	viewEngine contracts.ViewEngine
 }
 
 // NewRoute 创建基于 Fiber 的 HTTP 路由服务实例。
@@ -78,6 +80,11 @@ func NewRoute(cfg contracts.Config, validator contracts.Validation, storage cont
 	return &route{app: app, cfg: cfg, router: app, validator: validator, storage: storage, log: log}, nil
 }
 
+// SetViewEngine 将 HTML 模板引擎注入路由，后续每个请求上下文将持有该引擎引用。
+func (r *route) SetViewEngine(ve contracts.ViewEngine) {
+	r.viewEngine = ve
+}
+
 func (r *route) Run(addr ...string) error {
 	address := fmt.Sprintf("%s:%d",
 		r.cfg.GetString("server.host", "0.0.0.0"),
@@ -128,12 +135,13 @@ func (r *route) Options(path string, h contracts.HandlerFunc) contracts.Route {
 
 func (r *route) Group(prefix string, args ...any) contracts.Route {
 	group := &route{
-		app:       r.app,
-		cfg:       r.cfg,
-		router:    r.router.Group(prefix),
-		validator: r.validator,
-		storage:   r.storage,
-		log:       r.log,
+		app:        r.app,
+		cfg:        r.cfg,
+		router:     r.router.Group(prefix),
+		validator:  r.validator,
+		storage:    r.storage,
+		log:        r.log,
+		viewEngine: r.viewEngine,
 	}
 
 	var callback func(contracts.Route)
@@ -184,10 +192,25 @@ func (r *route) Register(controllers ...contracts.Controller) contracts.Route {
 	return r
 }
 
+// Static 从本地目录 dir 提供静态文件服务。
+func (r *route) Static(urlPrefix, dir string) contracts.Route {
+	r.app.Static(urlPrefix, dir)
+	return r
+}
+
+// StaticFS 从任意 http.FileSystem 提供静态文件服务（支持 http.FS(embed.FS)）。
+func (r *route) StaticFS(urlPrefix string, fs http.FileSystem) contracts.Route {
+	r.app.Use(urlPrefix, filesystem.New(filesystem.Config{
+		Root:   fs,
+		Browse: false,
+	}))
+	return r
+}
+
 // wrap 将 contracts.HandlerFunc 转为 Fiber handler。
 func (r *route) wrap(h contracts.HandlerFunc) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return h(NewContext(c, r.validator, r.storage))
+		return h(NewContext(c, r.validator, r.storage, r.viewEngine))
 	}
 }
 

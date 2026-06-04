@@ -9,7 +9,7 @@ import (
 
 // RegisterApp 注册前台路由，统一前缀 /api/v1。
 func RegisterApp() {
-	r := facades.Route()
+	r := facades.Http.Route()
 
 	// 公开接口（无需登录）
 	r.Get("/api/ping", func(ctx contracts.Context) error {

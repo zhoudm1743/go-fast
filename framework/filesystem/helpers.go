@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/zhoudm1743/go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/id"
 )
 
 const cloudMaxKeys = 1000
@@ -56,7 +56,7 @@ func cloudFile(filePath string, source contracts.File) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := uuid.New().String()
+	name := id.New()
 	if ext != "" {
 		name = name + "." + ext
 	}

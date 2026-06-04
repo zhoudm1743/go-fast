@@ -15,9 +15,11 @@
 | `facades.Cache()` | `contracts.Cache` | `cache` | 缓存服务 |
 | `facades.DB()` | `contracts.DB` | `db` | **数据库管理器（推荐）** |
 | `facades.Orm()` | `contracts.Orm` | `orm` | ~~ORM 服务（Deprecated，请迁移到 `DB()`）~~ |
-| `facades.Route()` | `contracts.Route` | `route` | HTTP 路由服务 |
+| `facades.Http.Route()` | `contracts.Route` | `route` | HTTP 路由服务 |
+| `facades.Http.JWT()` | `contracts.JWT` | `jwt` | JWT 签发/解析 |
+| `facades.Http.Validator()` | `contracts.Validation` | `validator` | 请求验证服务 |
+| `facades.Http.Session()` | `*session.Manager` | `session` | Session 管理器 |
 | `facades.Storage()` | `contracts.Storage` | `storage` | 文件存储服务 |
-| `facades.Validator()` | `contracts.Validation` | `validator` | 验证服务 |
 
 ---
 
@@ -416,7 +418,26 @@ facades.DB().Query().Delete(&user)
 
 ---
 
-## 七、facades.Route()
+## 七、facades.Http
+
+`facades.Http` 是 HTTP 层服务的统一命名空间，聚合了路由、JWT、验证器、Session 四项能力。所有 HTTP 相关服务均通过 `facades.Http.Xxx()` 调用，而非独立的顶级函数。
+
+```go
+// 路由
+r := facades.Http.Route()
+
+// JWT
+token, err := facades.Http.JWT().Sign(claims, key)
+
+// 验证
+err := facades.Http.Validator().Validate(input)
+
+// Session
+facades.Http.Session().Middleware()          // 注册中间件
+sess, _ := facades.Http.SessionFor(ctx)      // 在控制器中读取会话
+```
+
+### 7.1 facades.Http.Route()
 
 返回 `contracts.Route`，基于 Fiber v2 实现，支持链式注册、路由组回调、中间件和控制器自注册。
 
@@ -466,7 +487,7 @@ func (c *UserController) Boot(r contracts.Route) {
 路由文件只做编排：
 
 ```go
-r := facades.Route()
+r := facades.Http.Route()
 
 r.Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
     admin.Register(
@@ -476,10 +497,10 @@ r.Group("/admin", adminMiddleware.AdminAuth, func(admin contracts.Route) {
 })
 ```
 
-### Group 回调 + 行内中间件
+#### Group 回调 + 行内中间件
 
 ```go
-r := facades.Route()
+r := facades.Http.Route()
 
 // 回调方式（推荐）
 r.Group("/api/v1", appMiddleware.Auth, func(v1 contracts.Route) {
@@ -501,22 +522,64 @@ admin.Use(adminMiddleware.AdminAuth)
 admin.Get("/hello", helloHandler)
 ```
 
-### 启动服务器
+#### 启动服务器
 
 ```go
-r := facades.Route()
+r := facades.Http.Route()
 r.Run()                  // 使用配置中的 host:port
 r.Run(":8080")           // 指定地址
 ```
 
-### 内置特性
+### 7.2 facades.Http.Session()
+
+返回 `*session.Manager`，管理 HTTP Session。需在路由上注册中间件才能在控制器中自动读写会话。
+
+```go
+// routes/app.go —— 注册 Session 中间件
+r := facades.Http.Route()
+r.Use(facades.Http.Session().Middleware())
+
+// 控制器中 —— 读写会话
+func (c *Controller) Login(ctx contracts.Context) error {
+    sess, _ := facades.Http.SessionFor(ctx)
+    sess.Set("user_id", user.ID)
+    sess.Flash("msg", "登录成功")
+    return ctx.Response().Success(nil)
+}
+
+func (c *Controller) Dashboard(ctx contracts.Context) error {
+    sess, _ := facades.Http.SessionFor(ctx)
+    userID := sess.GetString("user_id")
+    msg := sess.GetFlash("msg")    // 读取后自动清除
+    _ = userID; _ = msg
+    return ctx.Response().Success(nil)
+}
+```
+
+#### Session 配置（config.yaml）
+
+```yaml
+session:
+  lifetime: 7200           # 会话有效期（秒），默认 2 小时
+  cookie: go_fast_session  # 保存 Session ID 的 Cookie 名称
+```
+
+### 7.3 facades.Http.JWT()
+
+返回 `contracts.JWT`，用于签发和解析 Token。
+
+### 7.4 facades.Http.Validator()
+
+返回 `contracts.Validation`，具体用法见“九、facades.Http.Validator()”章节。
+
+### 配置项
 
 - **健康检查**：`GET /health` → `{"status": "ok"}`（自动注册）
 - **Panic 恢复**：`recover` 中间件自动捕获 panic
 - **请求 ID**：`requestid` 中间件自动为每个请求生成唯一 ID
 - **CORS**：根据配置自动启用跨域支持
 
-### 配置项
+### 7.1 配置项
 
 ```yaml
 server:
@@ -597,7 +660,7 @@ local.Put("file.txt", "data")
 
 ---
 
-## 九、facades.Validator()
+## 九、facades.Http.Validator()
 
 返回 `contracts.Validation`，基于 `go-playground/validator` 实现，使用 `binding` tag 定义规则。
 
@@ -613,7 +676,7 @@ type Validation interface {
 ### 示例
 
 ```go
-v := facades.Validator()
+v := facades.Http.Validator()
 
 type CreateUserRequest struct {
     Name  string `json:"name"  binding:"required,min=2,max=50"`
@@ -648,27 +711,37 @@ type Input struct {
 
 ## 十、Facade 内部原理
 
-每个 Facade 本质上只是容器解析的语法糖，实现模式完全一致：
+`Http` 命名空间是一个结构体，底层同样通过容器解析：
 
 ```go
-// facades/xxx.go 的标准模式
-package facades
+// facades/http.go
+var Http = &httpFacade{}
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+type httpFacade struct{}
 
-func Xxx() contracts.XxxInterface {
-    return App().MustMake("xxx_key").(contracts.XxxInterface)
+func (h *httpFacade) Route() contracts.Route {
+    return App().MustMake("route").(contracts.Route)
+}
+
+func (h *httpFacade) JWT() contracts.JWT {
+    return App().MustMake("jwt").(contracts.JWT)
+}
+// ...
+```
+
+其他模块级 Facade（Cache、Log 等）仍采用顺个函数的模式：
+
+```go
+// facades/cache.go
+func Cache() contracts.Cache {
+    return App().MustMake("cache").(contracts.Cache)
 }
 ```
 
-如果你新增了自定义 Provider 并注册到容器中，可以很方便地为其添加一个 Facade：
+如果你新增了自定义 Provider 并注册到容器中，可以将其淖出为顶级函数或加入 `Http` 对象：
 
 ```go
 // facades/sms.go
-package facades
-
-import "github.com/zhoudm1743/go-fast/framework/contracts"
-
 func Sms() contracts.Sms {
     return App().MustMake("sms").(contracts.Sms)
 }

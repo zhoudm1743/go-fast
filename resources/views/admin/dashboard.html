@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}} — GoFast Admin</title>
+  <link rel="stylesheet" href="/static/admin/style.css">
+</head>
+<body>
+
+<header class="navbar">
+  <a class="brand" href="/pages">⚡ GoFast Admin</a>
+  <nav>
+    <a href="/pages/dashboard" {{if eq .Active "dashboard"}}class="active"{{end}}>控制面板</a>
+    <a href="/pages/users"     {{if eq .Active "users"}}class="active"{{end}}>用户管理</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h1>{{.Title}}</h1>
+
+  <!-- 统计卡片 -->
+  <div class="cards">
+    <div class="card blue">
+      <span class="label">总用户数</span>
+      <span class="value">{{.Stats.TotalUsers}}</span>
+      <span class="trend">↑ 较昨日 +12</span>
+    </div>
+    <div class="card green">
+      <span class="label">活跃用户</span>
+      <span class="value">{{.Stats.ActiveUsers}}</span>
+      <span class="trend">↑ 较昨日 +5</span>
+    </div>
+    <div class="card amber">
+      <span class="label">今日新增</span>
+      <span class="value">{{.Stats.TodayNew}}</span>
+      <span class="trend">— 持平</span>
+    </div>
+    <div class="card red">
+      <span class="label">禁用账号</span>
+      <span class="value">{{.Stats.Disabled}}</span>
+      <span class="trend">↓ 较昨日 -1</span>
+    </div>
+  </div>
+
+  <!-- 最近注册 -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>用户名</th>
+          <th>邮箱</th>
+          <th>注册时间</th>
+          <th>状态</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range $i, $u := .RecentUsers}}
+        <tr>
+          <td>{{inc $i}}</td>
+          <td>{{$u.Name}}</td>
+          <td>{{$u.Email}}</td>
+          <td>{{$u.CreatedAt}}</td>
+          <td><span class="badge active">正常</span></td>
+        </tr>
+        {{else}}
+        <tr><td colspan="5" class="empty">暂无数据</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</main>
+
+</body>
+</html>

@@ -31,7 +31,7 @@ func main() {
 
 	// 4. 启动 HTTP 服务器（协程，非阻塞）
 	go func() {
-		if err := facades.Route().Run(); err != nil {
+		if err := facades.Http.Route().Run(); err != nil {
 			facades.Log().Errorf("server error: %v", err)
 		}
 	}()

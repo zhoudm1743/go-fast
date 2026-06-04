@@ -14,6 +14,19 @@ server:
   cors_allow_origins:
     - "*"
 
+# ── HTML 模板渲染 ────────────────────────────────
+# 留空或不配置 dir 则禁用视图引擎（纯 API 项目可不配置）。
+# 嵌入打包场景请不要配置此项，改在自定义 ServiceProvider 中使用 view.WithFS。
+view:
+  dir: resources/views       # 模板根目录（相对于项目根）
+  extension: .html           # 文件扩展名过滤，空字符串表示加载全部
+  reload: true               # true=开发热重载；生产环境改为 false
+
+# ── Session ─────────────────────────────────────
+session:
+  lifetime: 7200             # 会话有效期（秒），默认 2 小时
+  cookie: go_fast_session    # 保存 Session ID 的 Cookie 名称
+
 # ── 数据库 ──────────────────────────────────────
 database:
   driver: sqlite             # sqlite / mysql / postgres / mssql

@@ -1,6 +1,9 @@
 package gin
 
 import (
+	"bytes"
+	"errors"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,15 +17,16 @@ import (
 // Context 实现 contracts.Context，内部包装 *gin.Context。
 // 应用代码只见 contracts.Context，不感知 Gin。
 type Context struct {
-	c         *gin.Context
-	store     map[string]any
-	validator contracts.Validation
-	storage   contracts.Storage
+	c          *gin.Context
+	store      map[string]any
+	validator  contracts.Validation
+	storage    contracts.Storage
+	viewEngine contracts.ViewEngine
 }
 
 // NewContext 创建 Gin 上下文包装器。
-func NewContext(c *gin.Context, v contracts.Validation, s contracts.Storage) *Context {
-	return &Context{c: c, store: make(map[string]any), validator: v, storage: s}
+func NewContext(c *gin.Context, v contracts.Validation, s contracts.Storage, ve contracts.ViewEngine) *Context {
+	return &Context{c: c, store: make(map[string]any), validator: v, storage: s, viewEngine: ve}
 }
 
 // ── 请求读取 ────────────────────────────────────────────────────────
@@ -120,6 +124,20 @@ func (ctx *Context) String(code int, s string) error {
 	return nil
 }
 
+// HTML 渲染 HTML 模板并发送响应。
+// name 为相对于模板目录的路径，例如 "home/index.html"。
+func (ctx *Context) HTML(code int, name string, data any) error {
+	if ctx.viewEngine == nil {
+		return errors.New("view: no view engine configured, please register view.ServiceProvider")
+	}
+	var buf bytes.Buffer
+	if err := ctx.viewEngine.Render(&buf, name, data); err != nil {
+		return err
+	}
+	ctx.c.Data(code, "text/html; charset=utf-8", buf.Bytes())
+	return nil
+}
+
 func (ctx *Context) Response() contracts.Response {
 	return base.NewResponse(ctx)
 }
@@ -171,6 +189,33 @@ func (ctx *Context) AbortWithJson(code int, obj any) error {
 // Underlying 返回底层 *gin.Context，用于 SSE 等高级场景。
 func (ctx *Context) Underlying() any {
 	return ctx.c
+}
+
+// ── Cookie ──────────────────────────────────────────────────────────
+
+func (ctx *Context) Cookie(name string) string {
+	v, _ := ctx.c.Cookie(name)
+	return v
+}
+
+func (ctx *Context) SetCookie(name, value string, opts contracts.CookieOptions) {
+	path := opts.Path
+	if path == "" {
+		path = "/"
+	}
+	sameSite := http.SameSiteLaxMode
+	switch opts.SameSite {
+	case "Strict":
+		sameSite = http.SameSiteStrictMode
+	case "None":
+		sameSite = http.SameSiteNoneMode
+	}
+	ctx.c.SetSameSite(sameSite)
+	ctx.c.SetCookie(name, value, opts.MaxAge, path, opts.Domain, opts.Secure, opts.HTTPOnly)
+}
+
+func (ctx *Context) ClearCookie(name string) {
+	ctx.SetCookie(name, "", contracts.CookieOptions{MaxAge: -1, Path: "/", HTTPOnly: true})
 }
 
 // ── 内部：Query 参数绑定（使用 `query` tag，与 Fiber 保持一致）──────
