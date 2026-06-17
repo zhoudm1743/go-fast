@@ -3,7 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
@@ -38,6 +41,9 @@ func NewOrm(cfg contracts.Config, log contracts.Log) (contracts.Orm, error) {
 	case "postgres":
 		db, err = gorm.Open(postgres.Open(dsn), gormCfg)
 	case "sqlite", "sqlite3":
+		if err := ensureSQLiteDir(cfg.GetString("database.database", "database.db"), dsn); err != nil {
+			return nil, err
+		}
 		db, err = gorm.Open(sqlite.Open(dsn), gormCfg)
 	case "mysql":
 		db, err = gorm.Open(mysql.Open(dsn), gormCfg)
@@ -94,6 +100,24 @@ func (o *orm) Close() error {
 		return err
 	}
 	return sqlDB.Close()
+}
+
+// ensureSQLiteDir 自动创建 SQLite 数据库文件的父目录，避免 "unable to open database file"。
+func ensureSQLiteDir(dbPath, dsn string) error {
+	if dbPath == "" {
+		raw := strings.TrimPrefix(dsn, "file:")
+		if idx := strings.Index(raw, "?"); idx != -1 {
+			dbPath = raw[:idx]
+		} else {
+			dbPath = raw
+		}
+	}
+	if dir := filepath.Dir(dbPath); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("[GoFast] sqlite: cannot create dir %q: %w", dir, err)
+		}
+	}
+	return nil
 }
 
 func buildDSN(cfg contracts.Config, driver string) string {
