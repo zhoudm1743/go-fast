@@ -43,6 +43,8 @@ type Response interface {
 	// View 渲染 HTML 模板并发送 HTTP 200 响应；需先通过 view.ServiceProvider 注册模板引擎。
 	// name 为相对于模板目录的路径，例如 "home/index.html"。
 	View(name string, data any) error
+	// Write 写入响应体。
+	Write(data []byte) error
 }
 
 // Context 是传递给每个 Handler 和 Middleware 的核心对象。
@@ -97,6 +99,8 @@ type Context interface {
 	Status(code int) Context
 	// SetHeader 设置响应头，返回自身以支持链式调用。
 	SetHeader(key, value string) Context
+	// Write 写入原始字节到响应体。
+	Write(data []byte) error
 
 	// ── 上下文存储（用于 Middleware 传值）────────
 
@@ -190,6 +194,12 @@ type Route interface {
 	// StaticFS 从任意 http.FileSystem 提供静态文件服务。
 	// 配合 go:embed 使用：StaticFS("/static", http.FS(embeddedSubFS))
 	StaticFS(urlPrefix string, fs http.FileSystem) Route
+
+	// ── 高级特性 ───────────────────────────────────
+	// Routes 获取所有路由。
+	Routes() []RouteInfo
+	// Route 获取指定路径的路由。
+	Route(path string) RouteInfo
 }
 
 // CookieOptions 设置 Cookie 的选项。
@@ -304,4 +314,9 @@ type ViewEngine interface {
 	// Render 将指定名称的模板与 data 合并后写入 w。
 	// name 为相对于模板目录的路径，路径分隔符统一使用 "/"，例如 "home/index.html"。
 	Render(w io.Writer, name string, data any) error
+}
+
+type RouteInfo struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
 }

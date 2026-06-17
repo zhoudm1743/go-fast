@@ -188,6 +188,11 @@ func (r *Response) Paginate(list any, total int64, page int, size int, message .
 	})
 }
 
+// Write 写入原始字节到响应体。
+func (r *Response) Write(data []byte) error {
+	return r.ctx.String(http.StatusOK, string(data))
+}
+
 // View 渲染 HTML 模板并发送 HTTP 200 响应。
 // name 为相对于模板目录的路径，例如 "home/index.html"。
 func (r *Response) View(name string, data any) error {

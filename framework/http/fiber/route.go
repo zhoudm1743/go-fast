@@ -214,6 +214,41 @@ func (r *route) wrap(h contracts.HandlerFunc) fiber.Handler {
 	}
 }
 
+// Routes 返回所有已注册路由的基本信息（Method + Path）。
+func (r *route) Routes() []contracts.RouteInfo {
+	fiberRoutes := r.app.GetRoutes()
+	seen := make(map[string]struct{}, len(fiberRoutes))
+	var result []contracts.RouteInfo
+	for _, fr := range fiberRoutes {
+		key := fr.Method + ":" + fr.Path
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, contracts.RouteInfo{
+			Method: fr.Method,
+			Path:   fr.Path,
+		})
+	}
+	if result == nil {
+		result = []contracts.RouteInfo{}
+	}
+	return result
+}
+
+// Route 返回指定路径的路由信息，不存在时返回零值 RouteInfo。
+func (r *route) Route(path string) contracts.RouteInfo {
+	for _, fr := range r.app.GetRoutes() {
+		if fr.Path == path {
+			return contracts.RouteInfo{
+				Method: fr.Method,
+				Path:   fr.Path,
+			}
+		}
+	}
+	return contracts.RouteInfo{}
+}
+
 // ── 内置中间件 ──────────────────────────────────────────────────────
 
 // loggerMiddleware 记录每个请求的方法、路径、状态码和耗时。

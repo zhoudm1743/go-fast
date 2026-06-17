@@ -224,6 +224,41 @@ func (r *route) wrap(h contracts.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
+// Routes 返回所有已注册路由的基本信息（Method + Path）。
+func (r *route) Routes() []contracts.RouteInfo {
+	ginRoutes := r.engine.Routes()
+	seen := make(map[string]struct{}, len(ginRoutes))
+	var result []contracts.RouteInfo
+	for _, gr := range ginRoutes {
+		key := gr.Method + ":" + gr.Path
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, contracts.RouteInfo{
+			Method: gr.Method,
+			Path:   gr.Path,
+		})
+	}
+	if result == nil {
+		result = []contracts.RouteInfo{}
+	}
+	return result
+}
+
+// Route 返回指定路径的路由信息，不存在时返回零值 RouteInfo。
+func (r *route) Route(path string) contracts.RouteInfo {
+	for _, gr := range r.engine.Routes() {
+		if gr.Path == path {
+			return contracts.RouteInfo{
+				Method: gr.Method,
+				Path:   gr.Path,
+			}
+		}
+	}
+	return contracts.RouteInfo{}
+}
+
 // ── 内置中间件 ──────────────────────────────────────────────────────
 
 // loggerMiddleware 记录每个请求的方法、路径、状态码和耗时。

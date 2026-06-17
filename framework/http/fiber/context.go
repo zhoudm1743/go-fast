@@ -109,6 +109,12 @@ func (ctx *Context) String(code int, s string) error {
 	return ctx.c.Status(code).SendString(s)
 }
 
+// Write 写入原始字节到响应体。
+func (ctx *Context) Write(data []byte) error {
+	_, err := ctx.c.Write(data)
+	return err
+}
+
 // HTML 渲染 HTML 模板并发送响应。
 // name 为相对于模板目录的路径，例如 "home/index.html"。
 func (ctx *Context) HTML(code int, name string, data any) error {
