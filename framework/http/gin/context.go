@@ -3,6 +3,7 @@ package gin
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -47,7 +48,17 @@ func (ctx *Context) Query(key string, defaultValue ...string) string {
 func (ctx *Context) Header(key string) string { return ctx.c.GetHeader(key) }
 func (ctx *Context) IP() string               { return ctx.c.ClientIP() }
 func (ctx *Context) BodyRaw() []byte {
-	body, _ := ctx.c.GetRawData()
+	body, err := io.ReadAll(ctx.c.Request.Body)
+	if ctx.c.Request.Body != nil {
+		ctx.c.Request.Body.Close()
+	}
+	// 替换 body，让后续 ctx.Bind() 能再次读取
+	if body != nil {
+		ctx.c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	}
+	if err != nil {
+		return nil
+	}
 	return body
 }
 
