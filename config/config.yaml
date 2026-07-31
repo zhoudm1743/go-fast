@@ -38,9 +38,12 @@ database:
 
 # ── 日志 ────────────────────────────────────────
 log:
+  mode: hybrid               # console | file | hybrid（默认 hybrid，控制台+文件）
   level: debug               # debug / info / warn / error / fatal / panic
-  format: color              # color / json / text
-  output_path: storage/logs/app.log
+  format: color              # 控制台格式：color / json / text
+  file_format: json          # 文件格式：json / text
+  output_path: storage/logs/app.log   # mode=file 或 hybrid 时生效
+  timestamp_format: "2006-01-02 15:04:05"  # 时间戳格式
   max_size: 100              # MB
   max_backups: 5
   max_age: 30                # 天

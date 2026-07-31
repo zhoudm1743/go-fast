@@ -16,5 +16,11 @@ func (sp *ServiceProvider) Register(app foundation.Application) {
 }
 
 func (sp *ServiceProvider) Boot(app foundation.Application) error {
+	// 注册优雅关闭钩子：刷新日志缓冲区并关闭 lumberjack writer
+	app.OnShutdown(func() {
+		if closer, ok := app.Log().(interface{ Close() error }); ok {
+			_ = closer.Close()
+		}
+	})
 	return nil
 }
