@@ -233,11 +233,123 @@ func TestParse_InvalidLength(t *testing.T) {
 }
 
 func TestParse_InvalidCharacter(t *testing.T) {
-	// 'i', 'l', 'o', 'u' 被排除在 charset 之外
-	for _, c := range []byte("ilou") {
-		bad := fmt.Sprintf("00000000%c0000000", c) // 16 chars but with invalid char
+	// 'u' 被排除在 charset 之外，且无纠错映射，应报错
+	// ('i'/'l'/'o' 会被 Crockford 纠错映射为 1/1/0，属于合法输入)
+	for _, c := range []byte("uU") {
+		bad := fmt.Sprintf("00000000%c0000000", c)
 		if _, err := id.Parse(bad); err == nil {
 			t.Fatalf("expected error for id containing %q: %q", c, bad)
+		}
+	}
+	// 其他不在 charset 中且无纠错映射的字符应报错
+	for _, c := range []byte("_/.") {
+		bad := fmt.Sprintf("00000000%c0000000", c)
+		if _, err := id.Parse(bad); err == nil {
+			t.Fatalf("expected error for id containing %q: %q", c, bad)
+		}
+	}
+}
+
+// ── Crockford 归一化测试 ──────────────────────────────────────────────
+
+func TestParse_Uppercase(t *testing.T) {
+	// 全大写 ID 应正确解析（Crockford 大小写不敏感）
+	upper := "01JDM4QR0S2FGK01"
+	ts, err := id.Parse(upper)
+	if err != nil {
+		t.Fatalf("大写 ID 解析失败: %v", err)
+	}
+	if ts.IsZero() {
+		t.Fatal("解析结果不应为零值")
+	}
+}
+
+func TestParse_MixedCase(t *testing.T) {
+	// 大小写混合解析
+	mixed := "01jDm4Qr0S2fGk01"
+	ts, err := id.Parse(mixed)
+	if err != nil {
+		t.Fatalf("大小写混合 ID 解析失败: %v", err)
+	}
+	if ts.IsZero() {
+		t.Fatal("解析结果不应为零值")
+	}
+}
+
+func TestParse_CorrectionChar_I(t *testing.T) {
+	// I/i 应映射为 1
+	for _, c := range []string{"I", "i"} {
+		// 构造 ID，将第 5 个字符替换为 I/i，其他用已知合法字符
+		raw := id.New()
+		modified := raw[:5] + c + raw[6:]
+		ts, err := id.Parse(modified)
+		if err != nil {
+			t.Fatalf("纠错字符 %q 解析失败: %v", c, err)
+		}
+		_ = ts
+	}
+}
+
+func TestParse_CorrectionChar_L(t *testing.T) {
+	// L/l 应映射为 1
+	for _, c := range []string{"L", "l"} {
+		raw := id.New()
+		modified := raw[:8] + c + raw[9:]
+		_, err := id.Parse(modified)
+		if err != nil {
+			t.Fatalf("纠错字符 %q 解析失败: %v", c, err)
+		}
+	}
+}
+
+func TestParse_CorrectionChar_O(t *testing.T) {
+	// O/o 应映射为 0
+	for _, c := range []string{"O", "o"} {
+		raw := id.New()
+		modified := raw[:3] + c + raw[4:]
+		_, err := id.Parse(modified)
+		if err != nil {
+			t.Fatalf("纠错字符 %q 解析失败: %v", c, err)
+		}
+	}
+}
+
+func TestParse_WithHyphens(t *testing.T) {
+	// 连字符应被忽略
+	raw := id.New()
+	// 在不同位置插入连字符
+	withHyphens := raw[:4] + "-" + raw[4:8] + "-" + raw[8:12] + "-" + raw[12:]
+	ts1, err := id.Parse(withHyphens)
+	if err != nil {
+		t.Fatalf("含连字符 ID 解析失败: %v", err)
+	}
+	ts2, err := id.Parse(raw)
+	if err != nil {
+		t.Fatalf("原始 ID 解析失败: %v", err)
+	}
+	if !ts1.Equal(ts2) {
+		t.Fatalf("含连字符的解析结果应与原始一致: %v vs %v", ts1, ts2)
+	}
+}
+
+func TestParse_HyphensInvalidAfterStrip(t *testing.T) {
+	// 连字符去除后长度不对仍应报错
+	_, err := id.Parse("abc-def")
+	if err == nil {
+		t.Fatal("去除连字符后长度不足应报错")
+	}
+}
+
+func TestParse_RoundTrip_Normalization(t *testing.T) {
+	// 生成 ID → Parse 往返（所有 New 输出都是小写无连字符，归一化不应改变）
+	for i := 0; i < 50; i++ {
+		v := id.New()
+		ts, err := id.Parse(v)
+		if err != nil {
+			t.Fatalf("Parse 往返失败: %v", err)
+		}
+		if ts.IsZero() {
+			t.Fatal("往返解析结果不应为零值")
 		}
 	}
 }

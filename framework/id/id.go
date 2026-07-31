@@ -26,6 +26,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -86,17 +87,29 @@ func New() string {
 	return encode(ts, r)
 }
 
+// normalizeReplacer 将 Crockford Base32 输入归一化：
+// 移除连字符、纠正常见混淆字符（I/i/L/l → 1、O/o → 0）。
+var normalizeReplacer = strings.NewReplacer(
+	"-", "",
+	"I", "1", "i", "1",
+	"L", "1", "l", "1",
+	"O", "0", "o", "0",
+)
+
 // Parse 解析 ID 中嵌入的毫秒时间戳。
-// 若长度不符或含非法字符，返回非 nil 错误。
+// 支持 Crockford Base32 大小写不敏感解析，自动纠正常见混淆字符（I/i/L/l→1、O/o→0），
+// 并忽略连字符以增强可读性。
 func Parse(v string) (time.Time, error) {
+	// 归一化：移除连字符、纠错字符映射、转小写
+	v = strings.ToLower(normalizeReplacer.Replace(v))
 	if len(v) != Size {
-		return time.Time{}, fmt.Errorf("id: invalid length %d (want %d)", len(v), Size)
+		return time.Time{}, fmt.Errorf("id: 无效长度 %d（应为 %d）", len(v), Size)
 	}
 	var ts uint64
 	for i := 0; i < 10; i++ {
 		idx := charToVal[v[i]]
 		if idx < 0 {
-			return time.Time{}, fmt.Errorf("id: invalid character %q at position %d", v[i], i)
+			return time.Time{}, fmt.Errorf("id: 位置 %d 存在无效字符 %q", i, v[i])
 		}
 		ts = ts<<5 | uint64(idx)
 	}
