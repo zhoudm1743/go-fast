@@ -16,8 +16,8 @@ type Config interface {
 	GetFloat64(key string, defaultValue ...float64) float64
 	// GetStringSlice 读取字符串切片配置。
 	GetStringSlice(key string, defaultValue ...[]string) []string
-	// GetStringMap 读取 map[string]any 配置。
-	GetStringMap(key string) map[string]any
+	// GetStringMap 读取 map[string]any 配置，支持默认值。
+	GetStringMap(key string, defaultValue ...map[string]any) map[string]any
 	// Set 运行时设置配置值（不持久化到文件）。
 	Set(key string, value any)
 	// SetDefaults 批量设置默认配置值（仅在用户未通过配置文件/环境变量配置时生效）。

@@ -607,7 +607,7 @@ func (f *fakeConfig) GetInt(key string, defaultValue ...int) int             { r
 func (f *fakeConfig) GetBool(key string, defaultValue ...bool) bool          { return false }
 func (f *fakeConfig) GetFloat64(key string, defaultValue ...float64) float64 { return 0 }
 func (f *fakeConfig) GetStringSlice(key string, defaultValue ...[]string) []string { return nil }
-func (f *fakeConfig) GetStringMap(key string) map[string]any                 { return nil }
+func (f *fakeConfig) GetStringMap(key string, defaultValue ...map[string]any) map[string]any { return nil }
 func (f *fakeConfig) Set(key string, value any)                              {}
 func (f *fakeConfig) SetDefaults(defaults map[string]any) {
 	for k, v := range defaults {
