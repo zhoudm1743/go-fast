@@ -103,6 +103,14 @@ func NewGormDriver(cfg contracts.ConnectionConfig, log contracts.Log) (*GormDriv
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Minute)
 	sqlDB.SetConnMaxIdleTime(time.Duration(cfg.ConnMaxIdleTime) * time.Minute)
 
+	// 验证数据库连通性
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := sqlDB.PingContext(ctx); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("[GoFast] gormdriver driver: database ping failed: %w", err)
+	}
+
 	return &GormDriver{db: db}, nil
 }
 

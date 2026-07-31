@@ -1,6 +1,7 @@
 package gormdriver
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -23,7 +24,11 @@ func wrapError(err error) error {
 		return fmt.Errorf("%w: %v", contracts.ErrInvalidTransaction, err)
 	default:
 		msg := err.Error()
-		if strings.Contains(msg, "Deadlock") || strings.Contains(msg, "deadlock") {
+		// MySQL: "Error 1213: Deadlock found when trying to get lock"
+		// PostgreSQL: "deadlock detected"
+		// SQLite: "database is locked"
+		if strings.Contains(msg, "Deadlock") || strings.Contains(msg, "deadlock") ||
+			strings.Contains(msg, "Error 1213") {
 			return fmt.Errorf("%w: %v", contracts.ErrDeadlock, err)
 		}
 		if strings.Contains(msg, "Duplicate entry") || strings.Contains(msg, "duplicate key") ||
@@ -35,5 +40,5 @@ func wrapError(err error) error {
 }
 
 func isErr(err, target error) bool {
-	return err == target || (err != nil && err.Error() == target.Error())
+	return errors.Is(err, target)
 }

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -41,7 +42,9 @@ type dbManager struct {
 
 var _ contracts.DB = (*dbManager)(nil)
 
-// NewDBManager 创建数据库管理器实例，自动检测新/旧配置格式。
+// NewDBManager 创建数据库管理器实例，自动检测新/旧配置格式，
+// 并预先创建所有配置的数据库连接。若任一连接创建失败，返回错误，
+// 确保启动时即发现连接问题。
 func NewDBManager(cfg contracts.Config, log contracts.Log) (contracts.DB, error) {
 	m := &dbManager{
 		cfg:         cfg,
@@ -51,6 +54,12 @@ func NewDBManager(cfg contracts.Config, log contracts.Log) (contracts.DB, error)
 	}
 	if err := m.parseConfig(); err != nil {
 		return nil, err
+	}
+	// 预先创建所有配置的连接，启动时即发现问题
+	for name := range m.connConfigs {
+		if _, err := m.getOrCreateDriver(name); err != nil {
+			return nil, fmt.Errorf("[GoFast] 数据库连接 %q 初始化失败: %w", name, err)
+		}
 	}
 	return m, nil
 }
@@ -117,46 +126,46 @@ func (m *dbManager) readLegacyConfig() ConnectionConfig {
 	}
 }
 
-func (m *dbManager) getOrCreateDriver(name string) contracts.Driver {
+func (m *dbManager) getOrCreateDriver(name string) (contracts.Driver, error) {
 	m.mu.RLock()
 	drv, ok := m.connections[name]
 	m.mu.RUnlock()
 	if ok {
-		return drv
+		return drv, nil
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if drv, ok = m.connections[name]; ok {
-		return drv
+		return drv, nil
 	}
 
 	cc, exists := m.connConfigs[name]
 	if !exists {
-		panic(fmt.Sprintf("[GoFast] database connection %q not configured", name))
+		return nil, fmt.Errorf("[GoFast] 数据库连接 %q 未配置", name)
 	}
 
 	factory, ok := getDriverFactory(cc.Driver)
 	if !ok {
-		panic(fmt.Sprintf("[GoFast] database driver %q not registered (connection %q)", cc.Driver, name))
+		return nil, fmt.Errorf("[GoFast] 数据库驱动 %q 未注册（连接 %q）", cc.Driver, name)
 	}
 
 	drv, err := factory(cc, m.log)
 	if err != nil {
-		panic(fmt.Sprintf("[GoFast] database connection %q init failed: %v", name, err))
+		return nil, fmt.Errorf("[GoFast] 数据库连接 %q 初始化失败: %w", name, err)
 	}
 
 	m.connections[name] = drv
-	return drv
+	return drv, nil
 }
 
 func (m *dbManager) Query(ctx ...context.Context) contracts.Query {
-	return m.getOrCreateDriver(m.defaultConn).Query(ctx...)
+	return mustDriver(m.getOrCreateDriver(m.defaultConn)).Query(ctx...)
 }
 
 func (m *dbManager) Connection(name string) contracts.Query {
-	return m.getOrCreateDriver(name).Query()
+	return mustDriver(m.getOrCreateDriver(name)).Query()
 }
 
 func (m *dbManager) Driver(name ...string) contracts.Driver {
@@ -164,34 +173,69 @@ func (m *dbManager) Driver(name ...string) contracts.Driver {
 	if len(name) > 0 {
 		connName = name[0]
 	}
-	return m.getOrCreateDriver(connName)
+	return mustDriver(m.getOrCreateDriver(connName))
 }
 
 func (m *dbManager) Transaction(fc func(tx contracts.Query) error, opts ...contracts.TxOption) error {
-	return m.Query().Transaction(fc, opts...)
+	drv, err := m.getOrCreateDriver(m.defaultConn)
+	if err != nil {
+		return err
+	}
+	return drv.Query().Transaction(fc, opts...)
 }
 
 func (m *dbManager) AutoMigrate(models ...any) error {
-	return m.getOrCreateDriver(m.defaultConn).AutoMigrate(models...)
+	drv, err := m.getOrCreateDriver(m.defaultConn)
+	if err != nil {
+		return err
+	}
+	return drv.AutoMigrate(models...)
 }
 
 func (m *dbManager) Ping() error {
-	return m.getOrCreateDriver(m.defaultConn).Ping()
+	drv, err := m.getOrCreateDriver(m.defaultConn)
+	if err != nil {
+		return err
+	}
+	return drv.Ping()
 }
 
 func (m *dbManager) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var lastErr error
+	var errs []error
 	for name, drv := range m.connections {
 		if err := drv.Close(); err != nil {
-			m.log.Errorf("[GoFast] close database connection %q: %v", name, err)
-			lastErr = err
+			m.log.Errorf("[GoFast] 关闭数据库连接 %q 失败: %v", name, err)
+			errs = append(errs, fmt.Errorf("连接 %q: %w", name, err))
 		}
 	}
 	m.connections = make(map[string]contracts.Driver)
-	return lastErr
+	return errorsJoin(errs...)
+}
+
+// mustDriver 在驱动获取失败时 panic，仅用于预配置连接已在启动时验证通过、
+// 运行时不应失败的场景。类似 regexp.MustCompile 的语义。
+func mustDriver(drv contracts.Driver, err error) contracts.Driver {
+	if err != nil {
+		panic(fmt.Sprintf("[GoFast] 数据库驱动获取失败: %v", err))
+	}
+	return drv
+}
+
+// errorsJoin 聚合多个错误（兼容 Go 1.20+ 的 errors.Join 语义）。
+func errorsJoin(errs ...error) error {
+	var nonNil []error
+	for _, e := range errs {
+		if e != nil {
+			nonNil = append(nonNil, e)
+		}
+	}
+	if len(nonNil) == 0 {
+		return nil
+	}
+	return errors.Join(nonNil...)
 }
 
 // Register 在运行时动态注册一个命名连接（多租户场景）。

@@ -25,7 +25,7 @@ type User struct {
 
 ```go
 type Model struct {
-    ID        string `gorm:"primaryKey;size:36;column:id"       json:"id"`
+    ID        string `gorm:"primaryKey;size:16;column:id"       json:"id"`
     CreatedAt int64  `gorm:"autoCreateTime;column:created_at"   json:"created_at"`
     UpdatedAt int64  `gorm:"autoUpdateTime;column:updated_at"   json:"updated_at"`
 }

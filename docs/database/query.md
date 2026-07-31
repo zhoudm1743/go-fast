@@ -269,7 +269,7 @@ if req.Status != 0 {
     q = q.Where("status = ?", req.Status)
 }
 
-// 先统计��数
+// 先统计总数
 var total int64
 q.Count(&total)
 

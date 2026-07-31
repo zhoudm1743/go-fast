@@ -13,6 +13,7 @@ type Model struct {
 	UpdatedAt int64  `gorm:"autoUpdateTime;column:updated_at"  xorm:"updated 'updated_at'"   json:"updated_at"`
 }
 
+// SoftDelete 软删除结构体，嵌入模型以启用软删除功能。
 type SoftDelete struct {
 	DeletedAt int64 `gorm:"column:deleted_at;index;default:0" xorm:"'deleted_at' index default(0)" json:"deleted_at"`
 }
@@ -29,7 +30,7 @@ func (m *Model) AutoGenerateID() {
 // ModelWithSoftDelete 带软删除的基础模型。
 type ModelWithSoftDelete struct {
 	Model
-	DeletedAt int64 `gorm:"column:deleted_at;index;default:0" xorm:"'deleted_at' index default(0)" json:"deleted_at"`
+	SoftDelete
 }
 
 // ── 模型钩子接口别名（向后兼容，实际定义在 contracts 包）─────────────

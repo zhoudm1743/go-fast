@@ -130,34 +130,58 @@ func (q *GormQuery) Preload(query string, args ...any) contracts.Query {
 // ── 终结方法 ─────────────────────────────────────────────────────────
 
 func (q *GormQuery) Find(dest any, conds ...any) error {
-	return wrapError(q.applySchema(dest).Find(dest, conds...).Error)
+	if err := wrapError(q.applySchema(dest).Find(dest, conds...).Error); err != nil {
+		return err
+	}
+	return invokeAfterFind(q, dest)
 }
 
 func (q *GormQuery) First(dest any, conds ...any) error {
-	return wrapError(q.applySchema(dest).First(dest, conds...).Error)
+	if err := wrapError(q.applySchema(dest).First(dest, conds...).Error); err != nil {
+		return err
+	}
+	return invokeAfterFind(q, dest)
 }
 
 func (q *GormQuery) Last(dest any, conds ...any) error {
-	return wrapError(q.applySchema(dest).Last(dest, conds...).Error)
+	if err := wrapError(q.applySchema(dest).Last(dest, conds...).Error); err != nil {
+		return err
+	}
+	return invokeAfterFind(q, dest)
 }
 
 func (q *GormQuery) Take(dest any, conds ...any) error {
-	return wrapError(q.applySchema(dest).Take(dest, conds...).Error)
+	if err := wrapError(q.applySchema(dest).Take(dest, conds...).Error); err != nil {
+		return err
+	}
+	return invokeAfterFind(q, dest)
 }
 
 func (q *GormQuery) Create(value any) error {
 	if err := invokeBeforeCreate(q, value); err != nil {
 		return err
 	}
-	return wrapError(q.applySchema(value).Create(value).Error)
+	if err := wrapError(q.applySchema(value).Create(value).Error); err != nil {
+		return err
+	}
+	return invokeAfterCreate(q, value)
 }
 
 func (q *GormQuery) CreateInBatches(value any, batchSize int) error {
+	if err := invokeBeforeCreate(q, value); err != nil {
+		return err
+	}
 	return wrapError(q.applySchema(value).CreateInBatches(value, batchSize).Error)
 }
 
 func (q *GormQuery) Save(value any) error {
-	return wrapError(q.applySchema(value).Save(value).Error)
+	if err := invokeBeforeUpdate(q, value); err != nil {
+		return err
+	}
+	if err := wrapError(q.applySchema(value).Save(value).Error); err != nil {
+		return err
+	}
+	return invokeAfterUpdate(q, value)
 }
 
 func (q *GormQuery) Update(column string, value any) error {
@@ -169,7 +193,13 @@ func (q *GormQuery) Updates(values any) error {
 }
 
 func (q *GormQuery) Delete(value any, conds ...any) error {
-	return wrapError(q.applySchema(value).Delete(value, conds...).Error)
+	if err := invokeBeforeDelete(q, value); err != nil {
+		return err
+	}
+	if err := wrapError(q.applySchema(value).Delete(value, conds...).Error); err != nil {
+		return err
+	}
+	return invokeAfterDelete(q, value)
 }
 
 func (q *GormQuery) Count(count *int64) error {
@@ -203,7 +233,13 @@ func (q *GormQuery) CreateResult(value any) contracts.Result {
 		return contracts.Result{Error: err}
 	}
 	tx := q.applySchema(value).Create(value)
-	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
+	if tx.Error != nil {
+		return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
+	}
+	if err := invokeAfterCreate(q, value); err != nil {
+		return contracts.Result{Error: err}
+	}
+	return contracts.Result{RowsAffected: tx.RowsAffected}
 }
 
 func (q *GormQuery) UpdateResult(column string, value any) contracts.Result {
@@ -217,13 +253,31 @@ func (q *GormQuery) UpdatesResult(values any) contracts.Result {
 }
 
 func (q *GormQuery) DeleteResult(value any, conds ...any) contracts.Result {
+	if err := invokeBeforeDelete(q, value); err != nil {
+		return contracts.Result{Error: err}
+	}
 	tx := q.applySchema(value).Delete(value, conds...)
-	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
+	if tx.Error != nil {
+		return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
+	}
+	if err := invokeAfterDelete(q, value); err != nil {
+		return contracts.Result{Error: err}
+	}
+	return contracts.Result{RowsAffected: tx.RowsAffected}
 }
 
 func (q *GormQuery) SaveResult(value any) contracts.Result {
+	if err := invokeBeforeUpdate(q, value); err != nil {
+		return contracts.Result{Error: err}
+	}
 	tx := q.applySchema(value).Save(value)
-	return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
+	if tx.Error != nil {
+		return contracts.Result{RowsAffected: tx.RowsAffected, Error: wrapError(tx.Error)}
+	}
+	if err := invokeAfterUpdate(q, value); err != nil {
+		return contracts.Result{Error: err}
+	}
+	return contracts.Result{RowsAffected: tx.RowsAffected}
 }
 
 // ── 原生 SQL ─────────────────────────────────────────────────────────
@@ -332,6 +386,9 @@ func (q *GormQuery) Unscoped() contracts.Query {
 	return q.wrap(q.db.Unscoped())
 }
 
+// OnlyTrashed 仅查询已软删除的记录（deleted_at != 0）。
+// 注意：列名 "deleted_at" 与 database.SoftDelete.DeletedAt 字段绑定，
+// 若自定义软删除列名需自行实现此逻辑。
 func (q *GormQuery) OnlyTrashed() contracts.Query {
 	return q.wrap(q.db.Unscoped().Where("deleted_at != 0"))
 }
@@ -347,15 +404,15 @@ func (q *GormQuery) ForceDelete(value any, conds ...any) error {
 // ── 高级查询 ─────────────────────────────────────────────────────────
 
 func (q *GormQuery) FirstOrCreate(dest any, conds ...any) error {
-	return wrapError(q.db.FirstOrCreate(dest, conds...).Error)
+	return wrapError(q.applySchema(dest).FirstOrCreate(dest, conds...).Error)
 }
 
 func (q *GormQuery) FirstOrInit(dest any, conds ...any) error {
-	return wrapError(q.db.FirstOrInit(dest, conds...).Error)
+	return wrapError(q.applySchema(dest).FirstOrInit(dest, conds...).Error)
 }
 
 func (q *GormQuery) FindInBatches(dest any, batchSize int, fc func(tx contracts.Query, batch int) error) error {
-	return wrapError(q.db.FindInBatches(dest, batchSize, func(tx *gorm.DB, batch int) error {
+	return wrapError(q.applySchema(dest).FindInBatches(dest, batchSize, func(tx *gorm.DB, batch int) error {
 		return fc(q.wrap(tx), batch)
 	}).Error)
 }
@@ -392,13 +449,19 @@ func (q *GormQuery) ScanMap(dest *[]map[string]any) error {
 		}
 		*dest = append(*dest, row)
 	}
+	if err := rows.Err(); err != nil {
+		return wrapError(err)
+	}
 	return nil
 }
 
 func (q *GormQuery) Exists(dest any, conds ...any) (bool, error) {
 	var count int64
-	err := q.db.Model(dest).Where(conds[0], conds[1:]...).Limit(1).Count(&count).Error
-	if err != nil {
+	tx := q.applySchema(dest).Model(dest)
+	if len(conds) > 0 {
+		tx = tx.Where(conds[0], conds[1:]...)
+	}
+	if err := tx.Limit(1).Count(&count).Error; err != nil {
 		return false, wrapError(err)
 	}
 	return count > 0, nil
@@ -418,59 +481,120 @@ func parseTxOptions(opts ...contracts.TxOption) *sql.TxOptions {
 	return nil
 }
 
-// invokeBeforeCreate 对 value 调用 BeforeCreate Hook。
-// 支持以下传入形式：
-//   - *T（单条记录指针）
-//   - []T 或 *[]T（批量记录，逐条调用）
-//   - []*T 或 *[]*T（批量记录指针，逐条调用）
-//
-// 调用顺序：
-//  1. contracts.IDAutoGenerator.AutoGenerateID() —— 自动生成主键，方法名不与任何 ORM Hook 冲突
-//  2. contracts.BeforeCreator.BeforeCreate(q)    —— 业务自定义创建前逻辑
-func invokeBeforeCreate(q contracts.Query, value any) error {
-	// 直接实现接口：最常见的 *T 路径，快速返回
-	if handled := callBeforeCreateOnValue(q, value); handled != nil {
-		return handled
-	}
+// ── 模型钩子调用框架 ─────────────────────────────────────────────────
 
-	// 用 reflect 处理切片/切片指针场景
+// walkValues 将 value 展开为可寻址对象指针，对每个元素调用 fn。
+// 支持 *T、T、[]T、*[]T、[]*T、*[]*T；切片逐元素执行，非切片单次执行。
+// 若 fn 返回错误，立即终止遍历并返回该错误。
+func walkValues(value any, fn func(iface any) error) error {
 	rv := reflect.ValueOf(value)
-	// 解引用外层指针（*[]T → []T）
+	// 解引用外层指针
 	for rv.Kind() == reflect.Ptr {
 		if rv.IsNil() {
 			return nil
 		}
 		rv = rv.Elem()
 	}
-	if rv.Kind() != reflect.Slice {
+
+	switch rv.Kind() {
+	case reflect.Slice:
+		for i := 0; i < rv.Len(); i++ {
+			elem := rv.Index(i)
+			var iface any
+			if elem.Kind() == reflect.Ptr {
+				if elem.IsNil() {
+					continue
+				}
+				iface = elem.Interface()
+			} else if elem.CanAddr() {
+				iface = elem.Addr().Interface()
+			} else {
+				continue
+			}
+			if err := fn(iface); err != nil {
+				return err
+			}
+		}
+		return nil
+	case reflect.Struct:
+		if !rv.CanAddr() {
+			return nil
+		}
+		return fn(rv.Addr().Interface())
+	default:
 		return nil
 	}
-	for i := 0; i < rv.Len(); i++ {
-		elem := rv.Index(i)
-		// 获取可寻址的指针以便接口匹配（[]T → &T）
-		var iface any
-		if elem.Kind() == reflect.Ptr {
-			iface = elem.Interface()
-		} else if elem.CanAddr() {
-			iface = elem.Addr().Interface()
-		} else {
-			continue
-		}
-		if err := callBeforeCreateOnValue(q, iface); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
-// callBeforeCreateOnValue 对单个对象调用 IDAutoGenerator 和 BeforeCreator。
-// 返回 nil 表示没有错误（包含"未实现接口"的情况）。
-func callBeforeCreateOnValue(q contracts.Query, iface any) error {
-	if ag, ok := iface.(contracts.IDAutoGenerator); ok {
-		ag.AutoGenerateID()
-	}
-	if bc, ok := iface.(contracts.BeforeCreator); ok {
-		return bc.OnBeforeCreate(q)
-	}
-	return nil
+// invokeBeforeCreate 对 value 依次调用 IDAutoGenerator 和 BeforeCreator。
+func invokeBeforeCreate(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if ag, ok := iface.(contracts.IDAutoGenerator); ok {
+			ag.AutoGenerateID()
+		}
+		if bc, ok := iface.(contracts.BeforeCreator); ok {
+			return bc.OnBeforeCreate(q)
+		}
+		return nil
+	})
+}
+
+// invokeAfterCreate 对 value 调用 AfterCreator。
+func invokeAfterCreate(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if ac, ok := iface.(contracts.AfterCreator); ok {
+			return ac.OnAfterCreate(q)
+		}
+		return nil
+	})
+}
+
+// invokeBeforeUpdate 对 value 调用 BeforeUpdater。
+func invokeBeforeUpdate(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if bu, ok := iface.(contracts.BeforeUpdater); ok {
+			return bu.OnBeforeUpdate(q)
+		}
+		return nil
+	})
+}
+
+// invokeAfterUpdate 对 value 调用 AfterUpdater。
+func invokeAfterUpdate(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if au, ok := iface.(contracts.AfterUpdater); ok {
+			return au.OnAfterUpdate(q)
+		}
+		return nil
+	})
+}
+
+// invokeBeforeDelete 对 value 调用 BeforeDeleter。
+func invokeBeforeDelete(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if bd, ok := iface.(contracts.BeforeDeleter); ok {
+			return bd.OnBeforeDelete(q)
+		}
+		return nil
+	})
+}
+
+// invokeAfterDelete 对 value 调用 AfterDeleter。
+func invokeAfterDelete(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if ad, ok := iface.(contracts.AfterDeleter); ok {
+			return ad.OnAfterDelete(q)
+		}
+		return nil
+	})
+}
+
+// invokeAfterFind 对 value 调用 AfterFinder。
+func invokeAfterFind(q contracts.Query, value any) error {
+	return walkValues(value, func(iface any) error {
+		if af, ok := iface.(contracts.AfterFinder); ok {
+			return af.OnAfterFind(q)
+		}
+		return nil
+	})
 }

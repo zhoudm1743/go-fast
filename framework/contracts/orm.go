@@ -3,6 +3,7 @@ package contracts
 import "gorm.io/gorm"
 
 // Orm 数据库 ORM 服务契约。
+// Deprecated: 请使用 DB 接口，此接口将在下一主版本移除。
 type Orm interface {
 	// DB 获取底层 *gorm.DB 连接实例。
 	DB() *gorm.DB

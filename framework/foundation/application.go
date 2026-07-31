@@ -151,13 +151,22 @@ func (a *application) Boot() {
 		}
 	}
 
-	// Phase 3: 自动执行 Migrator（如果 orm 服务可用）
-	if a.Bound("orm") {
-		orm := a.MustMake("orm").(contracts.Orm)
+	// Phase 3: 自动执行 Migrator（仅当有 Provider 实现了 Migrator 接口时才实例化 orm）
+	{
+		hasMigrator := false
 		for _, p := range immediate {
-			if m, ok := p.(Migrator); ok {
-				if err := m.Migrate(orm); err != nil {
-					panic(fmt.Sprintf("[GoFast] migrate failed: %v", err))
+			if _, ok := p.(Migrator); ok {
+				hasMigrator = true
+				break
+			}
+		}
+		if hasMigrator && a.Bound("orm") {
+			orm := a.MustMake("orm").(contracts.Orm)
+			for _, p := range immediate {
+				if m, ok := p.(Migrator); ok {
+					if err := m.Migrate(orm); err != nil {
+						panic(fmt.Sprintf("[GoFast] migrate failed: %v", err))
+					}
 				}
 			}
 		}

@@ -33,9 +33,15 @@ func (sp *ServiceProvider) Register(app foundation.Application) {
 
 func (sp *ServiceProvider) Boot(app foundation.Application) error {
 	app.OnShutdown(func() {
-		// 优先关闭新的 db 服务
+		// 关闭新的 db 服务
 		if db, err := app.Make("db"); err == nil {
 			if closer, ok := db.(contracts.DB); ok {
+				_ = closer.Close()
+			}
+		}
+		// 关闭旧的 orm 服务（向后兼容）
+		if orm, err := app.Make("orm"); err == nil {
+			if closer, ok := orm.(contracts.Orm); ok {
 				_ = closer.Close()
 			}
 		}
