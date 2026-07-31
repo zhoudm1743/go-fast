@@ -11,7 +11,11 @@ GoFast 队列系统允许你将耗时任务推送到后台异步执行，提升�
 
 ### 同步驱动（默认）
 
-当前默认使用同步驱动：`Dispatch()` 以独立 goroutine 执行，`DispatchSync()` 在当前进程内立即执行。
+当前默认使用同步驱动，内部采用**有界 worker 池**模式：
+- `Dispatch()` 将任务投递到 worker 池异步执行，队列满时阻塞背压
+- `DispatchSync()` 在当前 goroutine 内立即执行
+- 默认 worker 数量为 `runtime.NumCPU()`，可通过 `config.yaml` 的 `queue.workers` 配置
+- 应用关闭时自动排空队列中的任务后优雅退出
 
 ---
 
@@ -36,28 +40,6 @@ func (j *ProcessOrder) Signature() string {
 func (j *ProcessOrder) Handle(args ...any) error {
     fmt.Println("Processing order:", args)
     return nil
-}
-```
-
-### 注册任务
-
-在 `bootstrap/app.go` 中注册任务类：
-
-```go
-import (
-    "github.com/zhoudm1743/go-fast/app/jobs"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    goqueue "github.com/zhoudm1743/go-fast/framework/queue"
-)
-
-func Boot() foundation.Application {
-    app := /* 基础引导 ... */
-
-    goqueue.RegisterJobs(app, []contracts.QueueJob{
-        &jobs.ProcessOrder{},
-    })
-
-    return app
 }
 ```
 
@@ -126,6 +108,48 @@ err := facades.Queue().Chain([]contracts.QueueChain{
         Args: []contracts.QueueArg{{Type: "string", Value: "done"}},
     },
 }).Dispatch()
+```
+
+---
+
+### 重试
+
+通过 `Retry()` 设置失败后的最大重试次数（不含首次执行）：
+
+```go
+err := facades.Queue().Job(&jobs.ProcessOrder{}, []contracts.QueueArg{}).
+    Retry(3).  // 失败后最多重试 3 次
+    Dispatch()
+```
+
+重试间隔采用线性退避：第 n 次重试等待 `(n-1) × 100ms`。每次重试前记录 Warn 日志，全部失败后记录 Error 日志。
+
+### Panic 恢复
+
+任务的 `Handle()` 方法中发生的 panic 会被自动捕获并转换为 error：
+- 同步执行（`DispatchSync`）：panic 转为 error 直接返回
+- 异步执行（`Dispatch`）：panic 转为 error 由 worker 记录日志
+
+---
+
+## 优雅关闭
+
+队列管理器在应用关闭时会自动：
+1. 停止接收新任务（`Dispatch()` 返回错误）
+2. 排空缓冲区中已有的任务
+3. 等待所有 worker 完成后退出
+
+关闭顺序确保队列排空先于日志关闭，worker 的日志输出不会丢失。
+
+---
+
+## 配置
+
+`config/config.yaml` 中可配置 worker 数量：
+
+```yaml
+queue:
+  workers: 8  # 默认为 runtime.NumCPU()
 ```
 
 ---

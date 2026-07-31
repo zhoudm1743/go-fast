@@ -32,6 +32,8 @@ type QueuePending interface {
 	OnConnection(connection string) QueuePending
 	// Delay 延迟到指定时间后处理。
 	Delay(delay time.Time) QueuePending
+	// Retry 失败后的最大重试次数（不含首次执行；默认 0 表示不重试）。
+	Retry(times int) QueuePending
 	// Dispatch 推送到队列异步执行。
 	Dispatch() error
 	// DispatchSync 同步立即执行（不走队列）。
@@ -40,8 +42,6 @@ type QueuePending interface {
 
 // Queue 队列服务契约（facades.Queue() 返回此接口）。
 type Queue interface {
-	// Register 注册任务类（Signature → Job 映射）。
-	Register(jobs []QueueJob)
 	// Job 创建单个任务的待派发对象。
 	Job(job QueueJob, args []QueueArg) QueuePending
 	// Chain 创建链式任务的待派发对象。
