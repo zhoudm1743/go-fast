@@ -8,6 +8,7 @@ import (
 	fiberdriver "github.com/zhoudm1743/go-fast/framework/http/fiber"
 	gindriver "github.com/zhoudm1743/go-fast/framework/http/gin"
 	gosession "github.com/zhoudm1743/go-fast/framework/http/session"
+	validation "github.com/zhoudm1743/go-fast/framework/http/validation"
 	goview "github.com/zhoudm1743/go-fast/framework/http/view"
 )
 
@@ -25,6 +26,11 @@ type viewSetter interface {
 type ServiceProvider struct{}
 
 func (sp *ServiceProvider) Register(app foundation.Application) {
+	// 注册验证器（在 route 之前，因为 route 依赖 validator）
+	app.Singleton("validator", func(app foundation.Application) (any, error) {
+		return validation.NewValidator()
+	})
+
 	// 注册 Session 管理器
 	app.Singleton("session", func(app foundation.Application) (any, error) {
 		cfg := app.MustMake("config").(contracts.Config)

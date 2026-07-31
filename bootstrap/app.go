@@ -14,7 +14,6 @@ import (
 	"github.com/zhoudm1743/go-fast/framework/log"
 	goqueue "github.com/zhoudm1743/go-fast/framework/queue"
 	goschedule "github.com/zhoudm1743/go-fast/framework/schedule"
-	"github.com/zhoudm1743/go-fast/framework/validation"
 )
 
 // Boot 创建并引导 GoFast 应用。
@@ -43,12 +42,11 @@ func providers() []foundation.ServiceProvider {
 		&cache.ServiceProvider{},      // 3. 缓存
 		&database.ServiceProvider{},   // 4. 数据库
 		&filesystem.ServiceProvider{}, // 5. 文件系统
-		&validation.ServiceProvider{}, // 6. 验证器
-		&gojwt.ServiceProvider{},      // 7. JWT
-		&gohttp.ServiceProvider{},     // 8. HTTP 路由
-		&fast.ServiceProvider{},       // 10. 控制台
-		&goevent.ServiceProvider{},    // 11. 事件系统
-		&goqueue.ServiceProvider{},    // 12. 队列系统
-		&goschedule.ServiceProvider{}, // 13. 任务调度
+		&gojwt.ServiceProvider{},      // 6. JWT
+		&gohttp.ServiceProvider{},     // 7. HTTP 路由（含验证器）
+		&fast.ServiceProvider{},       // 8. 控制台
+		&goevent.ServiceProvider{},    // 9. 事件系统
+		&goqueue.ServiceProvider{},    // 10. 队列系统
+		&goschedule.ServiceProvider{}, // 11. 任务调度
 	}
 }
