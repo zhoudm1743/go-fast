@@ -1,9 +1,12 @@
 package foundation
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/zhoudm1743/go-fast/framework/contracts"
 )
 
 // ── Container 测试 ──────────────────────────────────────────────────
@@ -443,3 +446,237 @@ func (p *atomicCountDeferredProvider) Register(app Application) {
 }
 func (p *atomicCountDeferredProvider) Boot(app Application) error { return nil }
 func (p *atomicCountDeferredProvider) DeferredServices() []string { return p.keys }
+
+// ── Flush 清理 deferredMap 测试 ──────────────────────────────────────
+
+func TestFlush_ClearsDeferredMap(t *testing.T) {
+	dp := &deferredTestProvider{keys: []string{"lazy"}, value: "hello"}
+	app := NewApplication(".")
+	app.SetProviders([]ServiceProvider{dp})
+	app.Boot()
+
+	// 触发延迟加载
+	app.MustMake("lazy")
+
+	// Flush 清空
+	app.Flush()
+
+	// Flush 后 Bound 应返回 false
+	if app.Bound("lazy") {
+		t.Fatal("Flush should clear deferred map, Bound should return false")
+	}
+
+	// Flush 后 IsBooted 应返回 false
+	if app.IsBooted() {
+		t.Fatal("Flush should reset booted flag")
+	}
+}
+
+// ── Singleton 失败重试测试 ──────────────────────────────────────────
+
+func TestSingleton_RetryAfterError(t *testing.T) {
+	app := NewApplication(".")
+	attempts := 0
+
+	app.Singleton("fallible", func(a Application) (any, error) {
+		attempts++
+		if attempts < 3 {
+			return nil, fmt.Errorf("temporary error")
+		}
+		return "recovered", nil
+	})
+
+	// 前两次应该失败
+	for i := 0; i < 2; i++ {
+		_, err := app.Make("fallible")
+		if err == nil {
+			t.Fatalf("attempt %d should fail", i+1)
+		}
+	}
+
+	// 第三次应该成功（共 3 次调用，第 3 次成功）
+	v, err := app.Make("fallible")
+	if err != nil {
+		t.Fatalf("expected success on retry, got: %v", err)
+	}
+	if v != "recovered" {
+		t.Fatalf("expected 'recovered', got %v", v)
+	}
+	if attempts != 3 {
+		t.Fatalf("expected 3 attempts, got %d", attempts)
+	}
+
+	// 后续应该返回缓存的成功结果，不再调用 factory
+	v2, err := app.Make("fallible")
+	if err != nil {
+		t.Fatalf("expected cached success, got: %v", err)
+	}
+	if v2 != "recovered" {
+		t.Fatalf("expected 'recovered', got %v", v2)
+	}
+	if attempts != 3 {
+		t.Fatalf("factory should not be called again, attempts=%d", attempts)
+	}
+}
+
+func TestSingleton_ErrorNotCached(t *testing.T) {
+	app := NewApplication(".")
+	failCount := 0
+
+	app.Singleton("svc", func(a Application) (any, error) {
+		failCount++
+		if failCount == 1 {
+			return nil, fmt.Errorf("first attempt fails")
+		}
+		return "ok", nil
+	})
+
+	// 第一次失败
+	_, err := app.Make("svc")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	// 第二次成功（重试）
+	v, err := app.Make("svc")
+	if err != nil {
+		t.Fatalf("expected success on retry: %v", err)
+	}
+	if v != "ok" {
+		t.Fatalf("expected 'ok', got %v", v)
+	}
+	if failCount != 2 {
+		t.Fatalf("expected 2 attempts, got %d", failCount)
+	}
+}
+
+// ── DeferredProvider ConfigDefaults 测试 ─────────────────────────────
+
+type deferredConfigProvider struct {
+	registered bool
+	booted     bool
+}
+
+func (p *deferredConfigProvider) Register(app Application) {
+	p.registered = true
+	app.Singleton("deferred_svc", func(a Application) (any, error) {
+		return "deferred", nil
+	})
+}
+
+func (p *deferredConfigProvider) Boot(app Application) error {
+	p.booted = true
+	return nil
+}
+
+func (p *deferredConfigProvider) DeferredServices() []string {
+	return []string{"deferred_svc"}
+}
+
+func (p *deferredConfigProvider) ConfigDefaults() map[string]any {
+	return map[string]any{
+		"deferred.key": "default_value",
+	}
+}
+
+func TestDeferredProvider_ConfigDefaults(t *testing.T) {
+	dp := &deferredConfigProvider{}
+	app := NewApplication(".")
+
+	// 注册一个假的 config 服务来接收 ConfigDefaults
+	configValues := make(map[string]any)
+	app.Singleton("config", func(a Application) (any, error) {
+		return &fakeConfig{values: configValues}, nil
+	})
+
+	app.SetProviders([]ServiceProvider{dp})
+	app.Boot()
+
+	// 即使 deferred provider 尚未初始化，ConfigDefaults 也应在 Boot 阶段生效
+	if configValues["deferred.key"] != "default_value" {
+		t.Fatalf("ConfigDefaults should be applied during Boot, got: %v", configValues)
+	}
+}
+
+type fakeConfig struct{ values map[string]any }
+
+func (f *fakeConfig) Env(key string, defaultValue ...any) any               { return nil }
+func (f *fakeConfig) Get(key string, defaultValue ...any) any                { return nil }
+func (f *fakeConfig) GetString(key string, defaultValue ...string) string    { return "" }
+func (f *fakeConfig) GetInt(key string, defaultValue ...int) int             { return 0 }
+func (f *fakeConfig) GetBool(key string, defaultValue ...bool) bool          { return false }
+func (f *fakeConfig) GetFloat64(key string, defaultValue ...float64) float64 { return 0 }
+func (f *fakeConfig) GetStringSlice(key string, defaultValue ...[]string) []string { return nil }
+func (f *fakeConfig) GetStringMap(key string) map[string]any                 { return nil }
+func (f *fakeConfig) Set(key string, value any)                              {}
+func (f *fakeConfig) SetDefaults(defaults map[string]any) {
+	for k, v := range defaults {
+		f.values[k] = v
+	}
+}
+
+// ── Boot 并发安全测试 ────────────────────────────────────────────────
+
+func TestBoot_ConcurrentSafety(t *testing.T) {
+	count := 0
+	p := &countProvider{count: &count}
+	app := NewApplication(".")
+	app.SetProviders([]ServiceProvider{p})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			app.Boot()
+		}()
+	}
+	wg.Wait()
+
+	// CAS 保证仅执行一次
+	if count != 1 {
+		t.Fatalf("Boot should execute exactly once, got %d", count)
+	}
+	if !app.IsBooted() {
+		t.Fatal("IsBooted should return true after concurrent Boot calls")
+	}
+}
+
+// ── Application 类型化快捷方法测试 ────────────────────────────────────
+
+func TestApplication_Fast(t *testing.T) {
+	app := NewApplication(".")
+	app.Singleton("fast", func(a Application) (any, error) {
+		return &dummyFast{}, nil
+	})
+	app.Boot()
+
+	fast := app.Fast()
+	if fast == nil {
+		t.Fatal("Fast() should return non-nil")
+	}
+}
+
+func TestApplication_Validator(t *testing.T) {
+	app := NewApplication(".")
+	app.Singleton("validator", func(a Application) (any, error) {
+		return &dummyValidation{}, nil
+	})
+	app.Boot()
+
+	v := app.Validator()
+	if v == nil {
+		t.Fatal("Validator() should return non-nil")
+	}
+}
+
+type dummyFast struct{}
+
+func (d *dummyFast) Register(commands []contracts.ConsoleCommand) {}
+func (d *dummyFast) Call(command string) error                     { return nil }
+func (d *dummyFast) Run(args []string) error                       { return nil }
+
+type dummyValidation struct{}
+
+func (d *dummyValidation) Validate(obj any) error          { return nil }
+func (d *dummyValidation) RegisterRule(rule any) error     { return nil }

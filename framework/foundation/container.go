@@ -10,6 +10,7 @@ type Container interface {
 	// Bind 绑定工厂函数，每次 Make 都会调用工厂创建新实例。
 	Bind(key string, factory func(app Application) (any, error))
 	// Singleton 绑定单例工厂，仅首次 Make 时调用工厂，后续返回缓存实例。
+	// 若工厂返回错误，下次 Make 会自动重试（与 sync.Once 不同，不会永久缓存错误）。
 	Singleton(key string, factory func(app Application) (any, error))
 	// Instance 直接绑定一个已创建的实例到容器。
 	Instance(key string, instance any)
@@ -37,27 +38,27 @@ type binding struct {
 	typ      bindingType
 	factory  func(app Application) (any, error)
 	instance any
-	once     sync.Once
-	err      error // singleton 首次构建时的错误
+
+	// singleton 专用：用互斥锁 + 初始化标志替代 sync.Once，
+	// 使工厂在失败后支持重试（如临时网络故障）。
+	mu          sync.Mutex
+	initialized bool
+	err         error
 }
 
 // container Container 接口的默认实现
 type container struct {
 	mu       sync.RWMutex
 	bindings map[string]*binding
-	app      Application // 延迟设置，由 application 在创建后注入
+	app      Application // 构造时注入，初始化后不可变
 }
 
-// newContainer 创建一个空容器
-func newContainer() *container {
+// newContainer 创建一个空容器。app 在构造时注入以保证线程安全。
+func newContainer(app Application) *container {
 	return &container{
 		bindings: make(map[string]*binding),
+		app:      app,
 	}
-}
-
-// setApp 由 application 创建后调用，将 app 引用注入容器（供 factory 回调使用）
-func (c *container) setApp(app Application) {
-	c.app = app
 }
 
 func (c *container) Bind(key string, factory func(app Application) (any, error)) {
@@ -104,9 +105,15 @@ func (c *container) Make(key string) (any, error) {
 		return b.factory(c.app)
 
 	case bindSingleton:
-		b.once.Do(func() {
+		b.mu.Lock()
+		if !b.initialized {
 			b.instance, b.err = b.factory(c.app)
-		})
+			// 仅在成功时标记已初始化，失败时保持未初始化允许下次重试
+			if b.err == nil {
+				b.initialized = true
+			}
+		}
+		b.mu.Unlock()
 		if b.err != nil {
 			return nil, fmt.Errorf("[GoFast] singleton %q init failed: %w", key, b.err)
 		}
