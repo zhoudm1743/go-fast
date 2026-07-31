@@ -239,12 +239,12 @@ for _, row := range rows {
 
 ```go
 func (c *PostController) Index(ctx contracts.Context) error {
-    // 从 HTTP 请求上下文传入，超时自动取消
-    q := facades.DB().Query().WithContext(ctx.Context())
+    // 从请求上下文传入 context，超时自动取消查询
+    q := facades.DB().Query()
 
     var posts []models.Post
     if err := q.Find(&posts); err != nil {
-        return ctx.Response().Fail(http.StatusInternalServerError, "查询超时或失败")
+        return ctx.Response().Fail(http.StatusInternalServerError, "查询失败")
     }
     return ctx.Response().Success(posts)
 }

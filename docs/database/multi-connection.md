@@ -236,16 +236,10 @@ func (p *DatabaseProvider) MigrateDB(db contracts.DB) error {
         schema := "tenant_" + name
         // 先确保 schema 存在
         db.Connection("pg").Exec("CREATE SCHEMA IF NOT EXISTS " + schema)
-        // 在该 schema 下迁移表结构
-        if err := db.Driver("pg").(interface {
-            AutoMigrateInSchema(schema string, models ...any) error
-        }).AutoMigrateInSchema(schema,
-            &models.Order{},
-            &models.Product{},
-        ); err != nil {
-            // 降级：用 Schema().Exec 手动建表，或使用连接级 schema 连接
-            tmpDB := db.Connection("pg").Schema(schema)
-            _ = tmpDB.Exec("-- 在 " + schema + " 下初始化...")
+        // 通过 Exec 在该 schema 下执行建表 SQL
+        if err := db.Connection("pg").Schema(schema).Exec(
+            "CREATE TABLE IF NOT EXISTS orders (id VARCHAR(16) PRIMARY KEY, ...)"); err != nil {
+            return err
         }
     }
     return nil

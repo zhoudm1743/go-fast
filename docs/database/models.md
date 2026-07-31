@@ -4,7 +4,7 @@
 
 所有业务模型推荐嵌入 `database.Model`，自动获得：
 
-- **UUID v7** 字符串主键（创建时自动生成）
+- **时序 ID** 字符串主键（16 字符，创建时自动生成）
 - `created_at` 整型时间戳（Unix 毫秒，`autoCreateTime`）
 - `updated_at` 整型时间戳（Unix 毫秒，`autoUpdateTime`）
 
@@ -96,8 +96,8 @@ type Log struct {
 ```go
 type UserRole struct {
     database.Model
-    UserID string `gorm:"size:36;uniqueIndex:idx_user_role" json:"user_id"`
-    RoleID string `gorm:"size:36;uniqueIndex:idx_user_role" json:"role_id"`
+    UserID string `gorm:"size:16;uniqueIndex:idx_user_role" json:"user_id"`
+    RoleID string `gorm:"size:16;uniqueIndex:idx_user_role" json:"role_id"`
 }
 ```
 
@@ -106,7 +106,7 @@ type UserRole struct {
 ```go
 type Post struct {
     database.Model
-    UserID string `gorm:"size:36;index;not null" json:"user_id"`
+    UserID string `gorm:"size:16;index;not null" json:"user_id"`
     User   User   `gorm:"foreignKey:UserID"      json:"user,omitempty"`
     Title  string `gorm:"size:200;not null"      json:"title"`
 }
@@ -144,7 +144,7 @@ type Category struct {
     database.Model
     Name     string `gorm:"size:100;not null;uniqueIndex" json:"name"`
     Slug     string `gorm:"size:100;not null;uniqueIndex" json:"slug"`
-    ParentID string `gorm:"size:36;index;default:''"     json:"parent_id"`
+    ParentID string `gorm:"size:16;index;default:''"     json:"parent_id"`
     Sort     int    `gorm:"default:0"                   json:"sort"`
 }
 
@@ -164,8 +164,8 @@ type Post struct {
     Cover      string     `gorm:"size:500"                    json:"cover"`
     Status     int        `gorm:"default:0;index"             json:"status"` // 0=草稿 1=发布
     Views      int64      `gorm:"default:0"                   json:"views"`
-    UserID     string     `gorm:"size:36;index;not null"      json:"user_id"`
-    CategoryID string     `gorm:"size:36;index"               json:"category_id"`
+    UserID     string     `gorm:"size:16;index;not null"      json:"user_id"`
+    CategoryID string     `gorm:"size:16;index"               json:"category_id"`
     // 关联（不存入数据库）
     Author     *User      `gorm:"foreignKey:UserID"           json:"author,omitempty"`
     Category   *Category  `gorm:"foreignKey:CategoryID"       json:"category,omitempty"`

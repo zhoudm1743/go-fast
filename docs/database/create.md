@@ -18,7 +18,7 @@ fmt.Println(user.ID)         // 自动生成的时序 ID，如 "01jdm4qr0s2fgk01
 fmt.Println(user.CreatedAt)  // 自动填充的 Unix 时间戳
 ```
 
-> `Create` 会调用模型的 `BeforeCreate` 钩子，**自动生成时序 ID 主键**。
+> `Create` 会调用模型的 `AutoGenerateID()` 和 `OnBeforeCreate` 钩子，**自动生成时序 ID 主键**。
 
 ---
 
@@ -60,7 +60,7 @@ if err := facades.DB().Query().Create(&users); err != nil {
 }
 
 for _, u := range users {
-    fmt.Println(u.ID) // 每条记录都有唯一 UUID
+    fmt.Println(u.ID) // 每条记录都有唯一时序 ID
 }
 ```
 
@@ -166,7 +166,7 @@ if err := facades.DB().Query().
 }
 ```
 
-> ⚠️ 使用 Map 创建时，`BeforeCreate` 钩子（自动生成 ID）**不会**自动触发，需手动设置 `id`。
+> ⚠️ 使用 Map 创建时，`AutoGenerateID()` 钩子（自动生成 ID）**不会**自动触发，需手动设置 `id`。
 
 ---
 

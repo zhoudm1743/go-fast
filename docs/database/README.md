@@ -23,7 +23,7 @@
 - 📄 **分页内置** — `Paginate(page, size)` 一行搞定，自动计算 OFFSET
 - 🔄 **事务完善** — 自动事务、手动事务、SavePoint、隔离级别全支持
 - 🛡️ **标准错误** — `ErrRecordNotFound / ErrDuplicatedKey` 等 Sentinel，`errors.Is` 精确判断
-- 🪝 **生命周期钩子** — `BeforeCreate / AfterCreate` 等接口，UUID 自动生成内置
+- 🪝 **生命周期钩子** — `OnBeforeCreate / OnAfterCreate` 等接口，时序 ID 自动生成内置
 - 🔍 **软删除** — `ModelWithSoftDelete` 开箱即用，支持 Restore / OnlyTrashed / ForceDelete
 - 🧩 **作用域复用** — `Scopes(...)` 将常用条件封装为函数，DRY 原则
 - 🐛 **调试友好** — `.Debug()` 一键输出完整 SQL，慢查询自动告警
@@ -56,7 +56,7 @@ package models
 import "github.com/zhoudm1743/go-fast/framework/database"
 
 type User struct {
-    database.Model                                          // UUID 主键 + 时间戳
+    database.Model                                          // 时序 ID 主键 + 时间戳
     Name     string `gorm:"size:100;not null"  json:"name"`
     Email    string `gorm:"uniqueIndex;not null" json:"email"`
     Password string `gorm:"size:255"           json:"-"`
@@ -77,7 +77,7 @@ func (p *AppProvider) MigrateDB(db contracts.DB) error {
 // 创建
 user := &models.User{Name: "Alice", Email: "alice@example.com"}
 facades.DB().Query().Create(user)
-fmt.Println(user.ID) // 018f3e2a-... 自动生成 UUID v7
+fmt.Println(user.ID) // 01jdm4qr0s2fgk01... 自动生成时序 ID
 
 // 查询
 var user models.User
@@ -132,7 +132,7 @@ facades.DB().Query().Delete(&user)
 |------|------|
 | [事务](./transactions.md) | 自动事务、手动事务、SavePoint、隔离级别、Service 分层 |
 | [原生 SQL](./raw-sql.md) | Raw、Exec、Scan、ScanMap、Row/Rows、防 SQL 注入 |
-| [钩子](./hooks.md) | BeforeCreate / AfterCreate 等生命周期钩子，UUID 自动生成原理 |
+| [钩子](./hooks.md) | OnBeforeCreate / OnAfterCreate 等生命周期钩子，时序 ID 自动生成原理 |
 | [错误处理](./error-handling.md) | Sentinel Errors、errors.Is、Result 结构体、封装辅助函数 |
 
 ### 🏗️ 架构与扩展

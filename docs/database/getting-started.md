@@ -35,10 +35,10 @@ package models
 import "github.com/zhoudm1743/go-fast/framework/database"
 
 type Post struct {
-    database.Model                // 嵌入：UUID 主键 + CreatedAt + UpdatedAt
+    database.Model                // 嵌入：时序 ID 主键 + CreatedAt + UpdatedAt
     Title   string `gorm:"size:200;not null" json:"title"`
     Content string `gorm:"type:text"         json:"content"`
-    UserID  string `gorm:"size:36;index"     json:"user_id"`
+    UserID  string `gorm:"size:16;index"     json:"user_id"`
 }
 ```
 
@@ -86,7 +86,7 @@ post := &models.Post{Title: "Hello GoFast", Content: "内容..."}
 if err := facades.DB().Query().Create(post); err != nil {
     // 处理错误
 }
-fmt.Println(post.ID) // 自动生成的 UUID v7
+fmt.Println(post.ID) // 自动生成的时序 ID
 
 // ── 查询 ──────────────────────────────────────────────────────
 var post models.Post

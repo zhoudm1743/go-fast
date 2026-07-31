@@ -85,7 +85,7 @@ facades.DB().Query().Where("id IN ?", []string{"id1", "id2", "id3"})
 facades.DB().Query().Where("created_at BETWEEN ? AND ?", start, end)
 
 // IS NULL
-facades.DB().Query().Where("deleted_at IS NULL")
+facades.DB().Query().Where("age IS NOT NULL")
 
 // 多条件（AND）
 facades.DB().Query().Where("name = ? AND age >= ?", "Alice", 18)
