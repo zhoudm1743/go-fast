@@ -14,6 +14,17 @@ server:
   cors_allow_origins:
     - "*"
 
+# ── JWT ──────────────────────────────────────────
+jwt:
+  secret: "change-me-to-a-random-secret"
+  ttl: 60                      # 分钟
+  alg: HS256                   # HS256 / HS384 / HS512
+  # guards:                    # 命名 Guard（可选），每个 Guard 独立配置
+  #   platform:
+  #     secret: "platform-guard-secret"
+  #     ttl: 120
+  #     alg: HS512
+
 # ── HTML 模板渲染 ────────────────────────────────
 # 留空或不配置 dir 则禁用视图引擎（纯 API 项目可不配置）。
 # 嵌入打包场景请不要配置此项，改在自定义 ServiceProvider 中使用 view.WithFS。
