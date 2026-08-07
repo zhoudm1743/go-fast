@@ -614,6 +614,7 @@ func (f *fakeConfig) SetDefaults(defaults map[string]any) {
 		f.values[k] = v
 	}
 }
+func (f *fakeConfig) Add(namespace string, config map[string]any) {}
 
 // ── Boot 并发安全测试 ────────────────────────────────────────────────
 

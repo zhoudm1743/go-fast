@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	_ "github.com/zhoudm1743/go-fast/config" // 触发 Go 配置文件的 init() 注册
+
 	"github.com/zhoudm1743/go-fast/framework/cache"
 	"github.com/zhoudm1743/go-fast/framework/config"
 	"github.com/zhoudm1743/go-fast/framework/database"

@@ -13,10 +13,55 @@ import (
 // 编译期保证 configImpl 实现了 contracts.Config 接口。
 var _ contracts.Config = (*configImpl)(nil)
 
+// ── 全局缓冲区（供 init 阶段注册 Go 配置使用）────────────────
+
+// pendingAdd 保存一次 init 阶段的 Add 调用。
+type pendingAdd struct {
+	namespace string
+	config    map[string]any
+}
+
+var (
+	addMu       sync.RWMutex
+	pendingAdds []pendingAdd
+)
+
+// Add 注册命名空间配置。
+// 供项目根 config/ 包的 init() 函数调用。
+// init 阶段 Config 实例尚未创建，配置暂存到 pendingAdds 缓冲区，
+// 在 ServiceProvider.Register 中统一写入实例。
+func Add(namespace string, config map[string]any) {
+	addMu.Lock()
+	defer addMu.Unlock()
+	pendingAdds = append(pendingAdds, pendingAdd{namespace, config})
+}
+
+// GetRegistry 返回当前已注册的命名空间配置副本（用于测试）。
+func GetRegistry() map[string]map[string]any {
+	addMu.RLock()
+	defer addMu.RUnlock()
+	result := make(map[string]map[string]any, len(pendingAdds))
+	for _, pa := range pendingAdds {
+		result[pa.namespace] = pa.config
+	}
+	return result
+}
+
+// applyPendingAdds 将 init 阶段注册的 Go 配置写入实例。
+// 缓冲区只追加、不清空——重复应用是幂等的（SetDefault 同值覆盖）。
+func applyPendingAdds(c contracts.Config) {
+	addMu.RLock()
+	adds := append([]pendingAdd(nil), pendingAdds...)
+	addMu.RUnlock()
+	for _, pa := range adds {
+		c.Add(pa.namespace, pa.config)
+	}
+}
+
 // configImpl 实现 contracts.Config 接口，包装 viper。
 type configImpl struct {
 	viper *viper.Viper
-	mu    sync.RWMutex // 保护 Set/SetDefaults 与 Get 系列之间的并发读写
+	mu    sync.RWMutex // 保护 Set/SetDefaults/Add 与 Get 系列之间的并发读写
 }
 
 // NewConfig 从配置文件创建 Config 实例。
@@ -124,5 +169,29 @@ func (c *configImpl) SetDefaults(defaults map[string]any) {
 	defer c.mu.Unlock()
 	for key, val := range defaults {
 		c.viper.SetDefault(key, val)
+	}
+}
+
+// Add 以命名空间注册配置，递归展开嵌套 map 为点号键逐个写入 viper 默认值层。
+// 必须逐叶键展开：v.SetDefault("ns", map) 会整体替换，同命名空间多次 Add 时
+// 前一次的键将丢失。展开后每个叶键独立 SetDefault，保证逐键合并。
+func (c *configImpl) Add(namespace string, config map[string]any) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	setDefaultMap(c.viper, namespace, config)
+}
+
+// setDefaultMap 递归展开嵌套 map 为 "prefix.key" 点号键写入 viper 默认值层。
+func setDefaultMap(v *viper.Viper, prefix string, m map[string]any) {
+	for k, val := range m {
+		key := k
+		if prefix != "" {
+			key = prefix + "." + k
+		}
+		if sub, ok := val.(map[string]any); ok {
+			setDefaultMap(v, key, sub)
+			continue
+		}
+		v.SetDefault(key, val)
 	}
 }

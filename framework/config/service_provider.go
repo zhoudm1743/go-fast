@@ -7,7 +7,12 @@ type ServiceProvider struct{}
 
 func (sp *ServiceProvider) Register(app foundation.Application) {
 	app.Singleton("config", func(app foundation.Application) (any, error) {
-		return NewConfig(app.BasePath("config", "config.yaml"))
+		cfg, err := NewConfig(app.BasePath("config", "config.yaml"))
+		if err != nil {
+			return nil, err
+		}
+		applyPendingAdds(cfg)
+		return cfg, nil
 	})
 }
 

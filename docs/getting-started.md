@@ -24,79 +24,29 @@ cd GoFast
 
 ## 三、配置文件
 
-在 `config/config.yaml` 中配置：
+GoFast 支持两种配置方式：**YAML 文件** 和 **Go 源码文件**，详见 [配置说明](configuration.md)。
+
+简要示例 -- Go 配置文件 `config/app.go`：
+
+```go
+package config
+
+import fwconfig "github.com/zhoudm1743/go-fast/framework/config"
+
+func init() {
+    fwconfig.Add("app", map[string]any{
+        "name":  "GoFast",
+        "debug": false,
+    })
+}
+```
+
+YAML 文件 `config/config.yaml` 中的同名键会覆盖 Go 默认值：
 
 ```yaml
-# ── 服务器 ──────────────────────────────────────
 server:
-  name: GoFast
-  host: 0.0.0.0
-  port: 3000
-  mode: debug                # debug / release
-  read_timeout_sec: 30
-  write_timeout_sec: 30
-  idle_timeout_sec: 120
-  shutdown_timeout_sec: 10
-  prefork: false
-  body_limit_mb: 10
-  cors_allow_origins:
-    - "*"
-
-# ── 数据库 ──────────────────────────────────────
-database:
-  driver: sqlite              # sqlite / mysql / postgres / mssql
-  dsn: "gofast.db"            # SQLite 文件路径
-  # MySQL 示例:
-  # driver: mysql
-  # host: 127.0.0.1
-  # port: 3306
-  # database: gofast
-  # username: root
-  # password: secret
-  # charset: utf8mb4
-  max_idle_conns: 10
-  max_open_conns: 100
-  conn_max_lifetime: 60       # 分钟
-  conn_max_idle_time: 30      # 分钟
-
-# ── 日志 ────────────────────────────────────────
-log:
-  level: debug                # debug / info / warn / error / fatal / panic
-  format: color               # color / json / text
-  output_path: storage/logs/app.log
-  max_size: 100               # MB
-  max_backups: 5
-  max_age: 30                 # 天
-  compress: false
-
-# ── 文件系统 ────────────────────────────────────
-filesystem:
-  default: local
-  disks:
-    local:
-      driver: local
-      root: storage/app
-      url: /storage
-
-# ── 缓存 ────────────────────────────────────────
-cache:
-  driver: memory
-  memory:
-    shard_count: 32
-    clean_interval: 60        # 秒
-
-# ── gRPC ─────────────────────────────────────────────────────────────
-grpc:
-  host: 0.0.0.0
-  port: 9000
-  mode: debug                          # debug（开启 reflection）/ release
-  max_recv_msg_size_mb: 4
-  max_send_msg_size_mb: 4
-  max_conn_age_sec: 300
-  keepalive_time_sec: 60
-  tls:
-    cert_file: ""
-    key_file: ""
+  port: 8080
+  mode: release
 ```
 
 ---
@@ -358,6 +308,7 @@ func (p *AppProvider) MigrateDB(db contracts.DB) error {
 
 ## 十、下一步
 
+- [配置说明](configuration.md) — YAML 与 Go 配置文件的完整参考
 - [数据库文档](database/README.md) — 完整的数据库操作指南（查询、事务、分页、多连接等）
 - [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [控制器开发指南](controller.md) — 控制器、验证、数据库、中间件完整示例

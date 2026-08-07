@@ -47,18 +47,29 @@ cfg := app.MustMake("config").(contracts.Config)
 
 ## 三、facades.Config()
 
-返回 `contracts.Config`，基于 Viper 实现，支持 YAML 点号路径和环境变量。
+返回 `contracts.Config`，基于 Viper 实现，支持 YAML 点号路径、Go 配置文件和环境变量。
+详见 [配置说明](configuration.md)。
 
 ### 接口
 
 ```go
 type Config interface {
+    // 读取环境变量
     Env(key string, defaultValue ...any) any
+    // 读取配置（支持点号路径）
     Get(key string, defaultValue ...any) any
     GetString(key string, defaultValue ...string) string
     GetInt(key string, defaultValue ...int) int
     GetBool(key string, defaultValue ...bool) bool
+    GetFloat64(key string, defaultValue ...float64) float64
+    GetStringSlice(key string, defaultValue ...[]string) []string
+    GetStringMap(key string, defaultValue ...map[string]any) map[string]any
+    // 运行时设置（不持久化）
     Set(key string, value any)
+    // 批量默认值（不覆盖已有配置）
+    SetDefaults(defaults map[string]any)
+    // 注册命名空间配置 - 用于 Go 配置文件
+    Add(namespace string, config map[string]any)
 }
 ```
 
@@ -67,22 +78,29 @@ type Config interface {
 ```go
 cfg := facades.Config()
 
-// 读取配置（支持点号路径）
-host := cfg.GetString("server.host", "0.0.0.0")
-port := cfg.GetInt("server.port", 3000)
+// -- 读取配置（支持点号路径）
+host  := cfg.GetString("server.host", "0.0.0.0")
+port  := cfg.GetInt("server.port", 3000)
 debug := cfg.GetBool("server.prefork", false)
 
-// 读取嵌套配置
+// -- 读取嵌套配置
 driver := cfg.GetString("database.driver", "sqlite")
+dbCfg  := cfg.GetStringMap("database")
 
-// 读取环境变量
+// -- Go 配置文件的命名空间读取（通过 config.Add 注册）
+name := cfg.GetString("app.name", "GoFast")
+
+// -- 读取环境变量
 secret := cfg.Env("APP_SECRET", "default-secret")
 
-// 运行时修改（不持久化到文件）
+// -- 运行时修改（不持久化到文件）
 cfg.Set("server.port", 8080)
 
-// 获取任意类型
-val := cfg.Get("database.max_open_conns", 100)
+// -- 运行时注册 Go 配置
+cfg.Add("myapp", map[string]any{
+    "api_endpoint": "https://api.example.com",
+    "timeout":      30,
+})
 ```
 
 ---

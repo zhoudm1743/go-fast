@@ -80,7 +80,8 @@ func (c *fakeConfig) Get(key string, def ...any) any {
 	return nil
 }
 func (c *fakeConfig) Set(key string, value any)            {}
-func (c *fakeConfig) SetDefaults(defaults map[string]any)   {}
+func (c *fakeConfig) SetDefaults(defaults map[string]any)         {}
+func (c *fakeConfig) Add(namespace string, config map[string]any) {}
 func (c *fakeConfig) Env(key string, defaultValue ...any) any {
 	if len(defaultValue) > 0 {
 		return defaultValue[0]

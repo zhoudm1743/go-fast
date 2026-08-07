@@ -478,3 +478,197 @@ func TestGet_YAMLList(t *testing.T) {
 		t.Fatal("列表类型的配置不应为 nil")
 	}
 }
+
+// ── Add（Go 配置文件注册）测试 ──────────────────────────────────────
+
+// resetPendingAdds 清空全局缓冲区，用于测试隔离。
+func resetPendingAdds() {
+	addMu.Lock()
+	defer addMu.Unlock()
+	pendingAdds = nil
+}
+
+func TestAdd_And_Get(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	path := tempConfigFile(t, "")
+	cfg, _ := NewConfig(path)
+
+	cfg.Add("app", map[string]any{
+		"name":  "GoFast",
+		"debug": false,
+		"port":  8080,
+	})
+
+	if v := cfg.GetString("app.name"); v != "GoFast" {
+		t.Fatalf("期望 GoFast，得到 %v", v)
+	}
+	if v := cfg.GetBool("app.debug"); v {
+		t.Fatal("期望 false")
+	}
+	if v := cfg.GetInt("app.port"); v != 8080 {
+		t.Fatalf("期望 8080，得到 %v", v)
+	}
+}
+
+func TestAdd_NestedMap(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	path := tempConfigFile(t, "")
+	cfg, _ := NewConfig(path)
+
+	cfg.Add("database", map[string]any{
+		"default": "sqlite",
+		"pool": map[string]any{
+			"max_idle_conns": 10,
+			"max_open_conns": 100,
+		},
+	})
+
+	if v := cfg.GetString("database.default"); v != "sqlite" {
+		t.Fatalf("期望 sqlite，得到 %v", v)
+	}
+	if v := cfg.GetInt("database.pool.max_idle_conns"); v != 10 {
+		t.Fatalf("期望 10，得到 %v", v)
+	}
+	if v := cfg.GetInt("database.pool.max_open_conns"); v != 100 {
+		t.Fatalf("期望 100，得到 %v", v)
+	}
+}
+
+func TestAdd_YAMLWins(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	path := tempConfigFile(t, "app:\n  name: from-yaml")
+	cfg, _ := NewConfig(path)
+
+	cfg.Add("app", map[string]any{
+		"name":  "from-go",
+		"debug": false,
+	})
+
+	// YAML 值应覆盖 Go 默认值
+	if v := cfg.GetString("app.name"); v != "from-yaml" {
+		t.Fatalf("YAML 应覆盖 Go 默认值，期望 from-yaml，得到 %v", v)
+	}
+	// YAML 中不存在的键仍使用 Go 默认值
+	if v := cfg.GetBool("app.debug"); v {
+		t.Fatal("期望 false")
+	}
+}
+
+func TestAdd_SetWins(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	path := tempConfigFile(t, "")
+	cfg, _ := NewConfig(path)
+
+	cfg.Add("app", map[string]any{"name": "go-default"})
+	cfg.Set("app.name", "runtime")
+
+	if v := cfg.GetString("app.name"); v != "runtime" {
+		t.Fatalf("Set 应覆盖 Add 默认值，期望 runtime，得到 %v", v)
+	}
+}
+
+func TestAdd_SameNS_Merge(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	path := tempConfigFile(t, "")
+	cfg, _ := NewConfig(path)
+
+	// 第一次 Add
+	cfg.Add("app", map[string]any{"name": "GoFast", "debug": true})
+	// 第二次 Add：同命名空间应逐键合并，而非整体替换
+	cfg.Add("app", map[string]any{"debug": false, "env": "production"})
+
+	if v := cfg.GetString("app.name"); v != "GoFast" {
+		t.Fatalf("第一次 Add 的 name 不应丢失，期望 GoFast，得到 %v", v)
+	}
+	if v := cfg.GetBool("app.debug"); v {
+		t.Fatal("第二次 Add 应覆盖 debug 为 false")
+	}
+	if v := cfg.GetString("app.env"); v != "production" {
+		t.Fatalf("期望 production，得到 %v", v)
+	}
+}
+
+func TestAdd_Concurrent(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	path := tempConfigFile(t, "")
+	cfg, _ := NewConfig(path)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			cfg.Add("ns", map[string]any{"key": idx})
+			_ = cfg.GetInt("ns.key")
+		}(i)
+	}
+	wg.Wait()
+	// 无竞态即通过
+}
+
+func TestApplyPendingAdds(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	// 模拟 config/ 包 init() 阶段的注册
+	Add("app", map[string]any{"name": "GoFast", "debug": false})
+
+	path := tempConfigFile(t, "server:\n  port: 3000")
+	cfg, _ := NewConfig(path)
+	applyPendingAdds(cfg)
+
+	if v := cfg.GetString("app.name"); v != "GoFast" {
+		t.Fatalf("期望 GoFast，得到 %v", v)
+	}
+	if v := cfg.GetInt("server.port"); v != 3000 {
+		t.Fatalf("YAML 值应保留，期望 3000，得到 %v", v)
+	}
+}
+
+func TestApplyPendingAdds_YAMLWins(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	Add("app", map[string]any{"name": "from-go"})
+
+	path := tempConfigFile(t, "app:\n  name: from-yaml")
+	cfg, _ := NewConfig(path)
+	applyPendingAdds(cfg)
+
+	if v := cfg.GetString("app.name"); v != "from-yaml" {
+		t.Fatalf("YAML 应覆盖 Go 注册表值，期望 from-yaml，得到 %v", v)
+	}
+}
+
+func TestPackageAdd_Concurrent(t *testing.T) {
+	resetPendingAdds()
+	defer resetPendingAdds()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			Add("ns", map[string]any{"key": idx})
+			GetRegistry()
+		}(i)
+	}
+	wg.Wait()
+
+	registry := GetRegistry()
+	if len(registry) == 0 {
+		t.Fatal("注册表不应为空")
+	}
+}
