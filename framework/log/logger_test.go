@@ -3,6 +3,7 @@ package log
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -436,6 +437,82 @@ func TestLogger_Printf(t *testing.T) {
 	}
 }
 
+func readLastJSONLogLine(t *testing.T, logPath string) map[string]any {
+	t.Helper()
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	var m map[string]any
+	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &m); err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+func TestLogger_CallerInfo_Printf(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "test.log")
+
+	cfg := newFakeConfig().
+		set("log.mode", "file").
+		set("log.level", "debug").
+		set("log.output_path", logPath).
+		set("log.file_format", "json")
+
+	log, err := NewLogger(cfg)
+	if err != nil {
+		t.Fatalf("NewLogger 失败: %v", err)
+	}
+
+	log.(*logger).Printf("SELECT 1\n")
+
+	if err := log.(*logger).Close(); err != nil {
+		t.Errorf("Close() 错误: %v", err)
+	}
+
+	m := readLastJSONLogLine(t, logPath)
+	callerFile, _ := m["caller_file"].(string)
+	if strings.Contains(callerFile, "logger.go") {
+		t.Errorf("Printf caller_file 不应指向 logger.go: %s", callerFile)
+	}
+	if !strings.Contains(callerFile, "logger_test.go") {
+		t.Errorf("Printf caller_file 应指向测试文件: %s", callerFile)
+	}
+}
+
+func TestLogger_CallerInfo_WithFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	logPath := filepath.Join(tmpDir, "test.log")
+
+	cfg := newFakeConfig().
+		set("log.mode", "file").
+		set("log.level", "debug").
+		set("log.output_path", logPath).
+		set("log.file_format", "json")
+
+	log, err := NewLogger(cfg)
+	if err != nil {
+		t.Fatalf("NewLogger 失败: %v", err)
+	}
+
+	log.WithFields(map[string]any{"method": "GET"}).Info("http access")
+
+	if err := log.(*logger).Close(); err != nil {
+		t.Errorf("Close() 错误: %v", err)
+	}
+
+	m := readLastJSONLogLine(t, logPath)
+	callerFile, _ := m["caller_file"].(string)
+	if strings.Contains(callerFile, "logger.go") {
+		t.Errorf("WithFields caller_file 不应指向 logger.go: %s", callerFile)
+	}
+	if !strings.Contains(callerFile, "logger_test.go") {
+		t.Errorf("WithFields caller_file 应指向测试文件: %s", callerFile)
+	}
+}
+
 // =============================================================================
 // Caller 信息测试
 // =============================================================================
@@ -472,20 +549,21 @@ func TestLogger_CallerInfo(t *testing.T) {
 }
 
 // =============================================================================
-// TwoLine Encoder 测试
+// PrettyConsole Encoder 测试
 // =============================================================================
 
-func TestTwoLineEncoder(t *testing.T) {
+func TestPrettyConsoleEncoder(t *testing.T) {
 	cfg := zapcore.EncoderConfig{
-		TimeKey:       "time",
-		LevelKey:      "level",
-		MessageKey:    "msg",
-		EncodeLevel:   zapcore.LowercaseLevelEncoder,
-		EncodeTime:    zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
+		TimeKey:        "time",
+		LevelKey:       "level",
+		MessageKey:     "msg",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeTime:     zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 	}
 
-	enc := &twoLineEncoder{Encoder: zapcore.NewConsoleEncoder(cfg)}
+	enc := newPrettyConsoleEncoder(cfg, false, "2006-01-02 15:04:05")
 
 	entry := zapcore.Entry{
 		Level:   zapcore.InfoLevel,
@@ -494,10 +572,11 @@ func TestTwoLineEncoder(t *testing.T) {
 	}
 
 	fields := []zapcore.Field{
-		zap.String("caller", "/home/test/file.go:42"),
-		zap.String("caller_file", "/home/test/file.go"),
+		zap.String("caller", "/home/user/project/framework/http/gin/route.go:42"),
+		zap.String("caller_file", "/home/user/project/framework/http/gin/route.go"),
 		zap.Int("caller_line", 42),
-		zap.String("module", "test"),
+		zap.Int("status", 200),
+		zap.String("method", "GET"),
 	}
 
 	buf, err := enc.EncodeEntry(entry, fields)
@@ -507,26 +586,24 @@ func TestTwoLineEncoder(t *testing.T) {
 	defer buf.Free()
 
 	output := buf.String()
-	if !strings.HasPrefix(output, "/home/test/file.go:42\n") {
-		t.Errorf("输出应以 caller 行开头，实际: %q", output[:60])
+	if !strings.HasPrefix(output, "framework/http/gin/route.go:42\n") {
+		t.Errorf("输出应以缩短后的 caller 行开头，实际: %q", output)
 	}
 	if !strings.Contains(output, "测试消息") {
 		t.Errorf("输出应包含消息内容: %s", output)
 	}
-	// caller_file 和 caller_line 不应出现在 body 行中
-	if strings.Contains(output, "caller_file") {
-		t.Errorf("输出不应包含 caller_file 冗余字段: %s", output)
+	if strings.Contains(output, "caller_file") || strings.Contains(output, "caller_line") {
+		t.Errorf("输出不应包含冗余 caller 字段: %s", output)
 	}
-	if strings.Contains(output, "caller_line") {
-		t.Errorf("输出不应包含 caller_line 冗余字段: %s", output)
+	if strings.Contains(output, "{") || strings.Contains(output, "}") {
+		t.Errorf("控制台不应包含 JSON 格式: %s", output)
 	}
-	// 但 module 应该出现
-	if !strings.Contains(output, "module") {
-		t.Errorf("输出应包含 module 字段: %s", output)
+	if !strings.Contains(output, "status=200") || !strings.Contains(output, "method=GET") {
+		t.Errorf("输出应包含 key=value 字段: %s", output)
 	}
 }
 
-func TestTwoLineEncoder_NoCaller(t *testing.T) {
+func TestPrettyConsoleEncoder_NoCaller(t *testing.T) {
 	cfg := zapcore.EncoderConfig{
 		TimeKey:    "time",
 		LevelKey:   "level",
@@ -535,7 +612,7 @@ func TestTwoLineEncoder_NoCaller(t *testing.T) {
 		EncodeTime:  zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
 	}
 
-	enc := &twoLineEncoder{Encoder: zapcore.NewConsoleEncoder(cfg)}
+	enc := newPrettyConsoleEncoder(cfg, false, "2006-01-02 15:04:05")
 
 	entry := zapcore.Entry{
 		Level:   zapcore.InfoLevel,

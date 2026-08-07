@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/zhoudm1743/go-fast/framework/contracts"
 	"go.uber.org/zap"
@@ -28,15 +29,40 @@ type logEntry struct {
 	sugar *zap.SugaredLogger
 }
 
-// callerFields 通过 runtime.Caller 获取调用者信息，返回 zap 字段。
-// skip=3：0=callerFields，1=write/withCaller，2=公开方法（如 Info），3=业务代码。
+// callerFields 通过 runtime.Callers 获取调用者信息，自动跳过 logger.go 内部包装帧。
 func callerFields() []zapcore.Field {
-	_, file, line, ok := runtime.Caller(3)
-	f := shorten(file, ok)
+	const loggerSource = "framework/log/logger.go"
+
+	pcs := make([]uintptr, 32)
+	n := runtime.Callers(2, pcs) // 跳过 runtime.Callers 与 callerFields 自身
+	if n == 0 {
+		return unknownCallerFields()
+	}
+
+	frames := runtime.CallersFrames(pcs[:n])
+	for {
+		frame, more := frames.Next()
+		file := shorten(frame.File, true)
+		if strings.HasSuffix(file, loggerSource) {
+			if !more {
+				break
+			}
+			continue
+		}
+		return []zapcore.Field{
+			zap.String("caller_file", file),
+			zap.Int("caller_line", frame.Line),
+			zap.String("caller", fmt.Sprintf("%s:%d", file, frame.Line)),
+		}
+	}
+	return unknownCallerFields()
+}
+
+func unknownCallerFields() []zapcore.Field {
 	return []zapcore.Field{
-		zap.String("caller_file", f),
-		zap.Int("caller_line", line),
-		zap.String("caller", fmt.Sprintf("%s:%d", f, line)),
+		zap.String("caller_file", "unknown"),
+		zap.Int("caller_line", 0),
+		zap.String("caller", "unknown:0"),
 	}
 }
 
@@ -154,7 +180,7 @@ func newConsoleCore(cfg contracts.Config, lvl zap.AtomicLevel) zapcore.Core {
 		TimeKey:       "time",
 		LevelKey:      "level",
 		NameKey:       "logger",
-		CallerKey:     "", // caller 由 twoLineEncoder 手动处理
+		CallerKey:     "", // caller 由 prettyConsoleEncoder 手动处理
 		MessageKey:    "msg",
 		StacktraceKey: "stacktrace",
 		LineEnding:    zapcore.DefaultLineEnding,
@@ -166,17 +192,12 @@ func newConsoleCore(cfg contracts.Config, lvl zap.AtomicLevel) zapcore.Core {
 	switch format {
 	case "json":
 		enc = zapcore.NewJSONEncoder(encCfg)
-	case "color":
-		encCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		fallthrough
 	default:
-		base := zapcore.NewConsoleEncoder(encCfg)
-		// 仅在非 JSON 模式下使用两行格式（caller 单独一行）
-		if format != "json" {
-			enc = &twoLineEncoder{Encoder: base}
-		} else {
-			enc = base
+		colorEnabled := format == "color"
+		if colorEnabled {
+			encCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		}
+		enc = newPrettyConsoleEncoder(encCfg, colorEnabled, tsFmt)
 	}
 
 	return zapcore.NewCore(enc, zapcore.Lock(os.Stdout), lvl)
@@ -226,17 +247,28 @@ func newFileCore(cfg contracts.Config, lvl zap.AtomicLevel, path string) (zapcor
 }
 
 // =============================================================================
-// twoLineEncoder：控制台两行格式（caller 单独一行）
+// prettyConsoleEncoder：控制台可读格式（caller 单独一行，字段 key=value）
 // =============================================================================
 
-type twoLineEncoder struct {
-	zapcore.Encoder
+type prettyConsoleEncoder struct {
+	zapcore.Encoder // 满足 ObjectEncoder 接口，EncodeEntry 由本类型自行实现
+	cfg             zapcore.EncoderConfig
+	colorEnabled    bool
+	timeLayout      string
 }
 
-func (e *twoLineEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
-	// 提取 caller 字段，过滤掉 caller_file / caller_line
+func newPrettyConsoleEncoder(cfg zapcore.EncoderConfig, colorEnabled bool, timeLayout string) zapcore.Encoder {
+	return &prettyConsoleEncoder{
+		Encoder:      zapcore.NewConsoleEncoder(cfg),
+		cfg:          cfg,
+		colorEnabled: colorEnabled,
+		timeLayout:   timeLayout,
+	}
+}
+
+func (e *prettyConsoleEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) (*buffer.Buffer, error) {
 	var callerLine string
-	filtered := make([]zapcore.Field, 0, len(fields))
+	userFields := make([]zapcore.Field, 0, len(fields))
 	for _, f := range fields {
 		switch f.Key {
 		case "caller":
@@ -244,30 +276,158 @@ func (e *twoLineEncoder) EncodeEntry(ent zapcore.Entry, fields []zapcore.Field) 
 				callerLine = f.String
 			}
 		case "caller_file", "caller_line":
-			// 跳过，由 caller 统一展示
+			// 由 caller 统一展示
 		default:
-			filtered = append(filtered, f)
+			userFields = append(userFields, f)
 		}
 	}
 
-	buf, err := e.Encoder.EncodeEntry(ent, filtered)
-	if err != nil {
-		return nil, err
-	}
-	if callerLine == "" {
-		return buf, nil
+	line := buffer.NewPool().Get()
+
+	if callerLine != "" {
+		line.AppendString(displayCaller(callerLine))
+		line.AppendString("\n")
 	}
 
-	// 在首部插入 caller 行
-	existing := buf.Bytes()
-	buf.Reset()
-	buf.AppendString(callerLine + "\n")
-	buf.AppendBytes(existing)
-	return buf, nil
+	if e.cfg.TimeKey != "" {
+		line.AppendString(ent.Time.Format(e.timeLayout))
+		line.AppendString("  ")
+	}
+
+	appendLevel(line, ent.Level, e.colorEnabled)
+	line.AppendString("  ")
+
+	if ent.Message != "" {
+		line.AppendString(ent.Message)
+	}
+
+	if len(userFields) > 0 {
+		line.AppendString("  ")
+		formatConsoleFields(line, userFields)
+	}
+
+	line.AppendString(e.cfg.LineEnding)
+
+	if ent.Stack != "" && e.cfg.StacktraceKey != "" {
+		line.AppendString(ent.Stack)
+	}
+
+	return line, nil
 }
 
-func (e *twoLineEncoder) Clone() zapcore.Encoder {
-	return &twoLineEncoder{Encoder: e.Encoder.Clone()}
+func (e *prettyConsoleEncoder) Clone() zapcore.Encoder {
+	return &prettyConsoleEncoder{
+		Encoder:      e.Encoder.Clone(),
+		cfg:          e.cfg,
+		colorEnabled: e.colorEnabled,
+		timeLayout:   e.timeLayout,
+	}
+}
+
+var levelColors = map[zapcore.Level]string{
+	zapcore.DebugLevel: "\033[34m",
+	zapcore.InfoLevel:  "\033[32m",
+	zapcore.WarnLevel:  "\033[33m",
+	zapcore.ErrorLevel: "\033[31m",
+	zapcore.FatalLevel: "\033[35m",
+	zapcore.PanicLevel: "\033[35m",
+}
+
+const colorReset = "\033[0m"
+
+func appendLevel(buf *buffer.Buffer, level zapcore.Level, colorEnabled bool) {
+	if colorEnabled {
+		if c, ok := levelColors[level]; ok {
+			buf.AppendString(c)
+		}
+	}
+	buf.AppendString(level.CapitalString())
+	if colorEnabled {
+		buf.AppendString(colorReset)
+	}
+}
+
+// displayCaller 缩短 caller 路径，优先展示 app/、framework/ 等业务路径。
+func displayCaller(caller string) string {
+	idx := strings.LastIndex(caller, ":")
+	if idx <= 0 {
+		return caller
+	}
+	file, line := caller[:idx], caller[idx+1:]
+	for _, anchor := range []string{"app/", "framework/", "routes/", "config/", "bootstrap/"} {
+		if i := strings.Index(file, anchor); i >= 0 {
+			return file[i:] + ":" + line
+		}
+	}
+	if i := strings.LastIndex(file, "/"); i >= 0 {
+		return file[i+1:] + ":" + line
+	}
+	return caller
+}
+
+func formatConsoleFields(buf *buffer.Buffer, fields []zapcore.Field) {
+	for i, f := range fields {
+		if i > 0 {
+			buf.AppendString("  ")
+		}
+		buf.AppendString(f.Key)
+		buf.AppendByte('=')
+		buf.AppendString(formatFieldValue(f))
+	}
+}
+
+func formatFieldValue(f zapcore.Field) string {
+	switch f.Type {
+	case zapcore.StringType:
+		return quoteIfNeeded(f.String)
+	case zapcore.BoolType:
+		if f.Integer == 1 {
+			return "true"
+		}
+		return "false"
+	case zapcore.Int64Type, zapcore.Int32Type, zapcore.Int16Type, zapcore.Int8Type,
+		zapcore.Uint64Type, zapcore.Uint32Type, zapcore.Uint16Type, zapcore.Uint8Type,
+		zapcore.UintptrType:
+		return fmt.Sprintf("%d", f.Integer)
+	case zapcore.Float64Type, zapcore.Float32Type:
+		enc := zapcore.NewMapObjectEncoder()
+		f.AddTo(enc)
+		if v, ok := enc.Fields[f.Key]; ok {
+			return fmt.Sprintf("%v", v)
+		}
+		return "0"
+	case zapcore.DurationType:
+		return time.Duration(f.Integer).String()
+	case zapcore.TimeType:
+		if f.Interface != nil {
+			if t, ok := f.Interface.(time.Time); ok {
+				return t.Format("2006-01-02 15:04:05")
+			}
+		}
+		return fmt.Sprintf("%d", f.Integer)
+	case zapcore.ErrorType:
+		if f.Interface != nil {
+			if err, ok := f.Interface.(error); ok {
+				return quoteIfNeeded(err.Error())
+			}
+		}
+		return "<nil>"
+	default:
+		if f.Interface != nil {
+			return quoteIfNeeded(fmt.Sprint(f.Interface))
+		}
+		return quoteIfNeeded(f.String)
+	}
+}
+
+func quoteIfNeeded(s string) string {
+	if s == "" {
+		return `""`
+	}
+	if strings.ContainsAny(s, " \t\n\"") {
+		return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+	}
+	return s
 }
 
 // =============================================================================
@@ -370,10 +530,9 @@ func (l *logger) Close() error {
 // Printf 实现 GORM logger.Writer 接口。
 func (l *logger) Printf(format string, args ...any) {
 	if len(args) == 0 {
-		// GORM 传已格式化字符串、零参数时原样 Info 输出
-		l.Info(strings.TrimSuffix(format, "\n"))
+		l.write(zapcore.InfoLevel, strings.TrimSuffix(format, "\n"))
 	} else {
-		l.Infof(format, args...)
+		l.writef(zapcore.InfoLevel, format, args...)
 	}
 }
 

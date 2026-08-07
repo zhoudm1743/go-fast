@@ -36,20 +36,13 @@ func main() {
 		}
 	}()
 
-	// 5. 启动 gRPC 服务器（协程，非阻塞）
-	// go func() {
-	// 	if err := facades.GRPC().Run(); err != nil {
-	// 		facades.Log().Errorf("grpc server error: %v", err)
-	// 	}
-	// }()
-
-	// 6. 等待退出信号
+	// 5. 等待退出信号
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	fmt.Println("\n[GoFast] shutting down...")
 
-	// 7. 优雅关闭（HTTP + gRPC 均通过 OnShutdown 钩子关闭）
+	// 6. 优雅关闭（HTTP 通过 OnShutdown 钩子关闭）
 	app.Shutdown()
 }

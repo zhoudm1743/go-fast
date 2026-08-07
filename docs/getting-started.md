@@ -100,7 +100,6 @@ main.go
 | 5 | `filesystem.ServiceProvider` | `storage` | 文件系统（依赖 config） |
 | 6 | `validation.ServiceProvider` | `validator` | 验证器 |
 | 7 | `http.ServiceProvider` | `route` | HTTP 路由（依赖 config） |
-| 8 | `grpc.ServiceProvider` | `grpc` | gRPC 服务器（依赖 config + log） |
 
 ---
 
@@ -208,9 +207,7 @@ func Register() {
 ```go
 app := bootstrap.Boot()
 routes.Register()             // 注册 HTTP 路由
-routes.RegisterGRPC()         // 注册 gRPC 服务
 facades.Http.Route().Run()    // 启动 HTTP 服务器
-// gRPC 服务器已在协程中启动（facades.GRPC().Run()）
 ```
 
 ---
@@ -247,8 +244,6 @@ content, _ := facades.Storage().Get("hello.txt")
 // 验证
 err := facades.Http.Validator().Validate(input)
 
-// gRPC Server
-facades.GRPC().RegisterService(&userpb.UserService_ServiceDesc, &services.UserServiceServer{})
 ```
 
 ---
@@ -312,7 +307,6 @@ func (p *AppProvider) MigrateDB(db contracts.DB) error {
 - [数据库文档](database/README.md) — 完整的数据库操作指南（查询、事务、分页、多连接等）
 - [路由设计文档](route.md) — Group 回调、控制器自注册、中间件策略
 - [控制器开发指南](controller.md) — 控制器、验证、数据库、中间件完整示例
-- [gRPC 使用指南](grpc.md) — gRPC 服务定义、代码生成、拦截器、grpcurl 调试
 - [容器 API](container.md) — 了解服务容器的完整接口
 - [Facade 使用说明](facade.md) — 每个 Facade 的详细用法
 - [编写自定义 Provider](service-provider.md) — 扩展框架能力

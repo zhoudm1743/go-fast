@@ -44,7 +44,6 @@ Go 配置文件 (config/*.go init)  <  YAML 文件 (config/config.yaml)  <  运�
 | `config/log.go` | `log` | 日志 |
 | `config/filesystem.go` | `filesystem` | 文件存储 |
 | `config/cache.go` | `cache` | 缓存 |
-| `config/grpc.go` | `grpc` | gRPC 服务 |
 
 ### 编写自己的配置文件
 
@@ -276,22 +275,6 @@ mode := facades.Config().Env("APP_MODE", "development")
 | `cache.redis.password` | string | `""` | Redis 密码 |
 | `cache.redis.db` | int | `0` | Redis 数据库编号 |
 | `cache.redis.prefix` | string | `""` | 缓存键前缀 |
-
-### grpc -- gRPC 服务
-
-| 键 | 类型 | 默认值 | 说明 |
-|----|------|--------|------|
-| `grpc.host` | string | `0.0.0.0` | 监听地址 |
-| `grpc.port` | int | `9000` | 监听端口 |
-| `grpc.mode` | string | `debug` | 运行模式 |
-| `grpc.max_recv_msg_size_mb` | int | `4` | 最大接收消息（MB） |
-| `grpc.max_send_msg_size_mb` | int | `4` | 最大发送消息（MB） |
-| `grpc.max_conn_age_sec` | int | `300` | 连接最大存活（秒） |
-| `grpc.max_conn_age_grace_sec` | int | `5` | 宽限期（秒） |
-| `grpc.keepalive_time_sec` | int | `60` | Keepalive 间隔（秒） |
-| `grpc.keepalive_timeout_sec` | int | `20` | Keepalive 超时（秒） |
-| `grpc.tls.cert_file` | string | `""` | TLS 证书文件 |
-| `grpc.tls.key_file` | string | `""` | TLS 密钥文件 |
 
 ---
 
