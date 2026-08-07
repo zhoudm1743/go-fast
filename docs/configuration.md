@@ -200,16 +200,32 @@ mode := facades.Config().Env("APP_MODE", "development")
 
 ### database -- 数据库
 
+每个数据库连接为一个独立的 map，配置在 `database.connections` 下。
+
 | 键 | 类型 | 默认值 | 说明 |
 |----|------|--------|------|
-| `database.driver` | string | `sqlite` | 驱动：sqlite / mysql / postgres / mssql |
-| `database.database` | string | `database/gofast.db` | 数据库名/文件路径 |
-| `database.max_idle_conns` | int | `10` | 最大空闲连接数 |
-| `database.max_open_conns` | int | `100` | 最大打开连接数 |
-| `database.conn_max_lifetime` | int | `60` | 连接最大存活时间（分钟） |
-| `database.conn_max_idle_time` | int | `30` | 连接最大空闲时间（分钟） |
+| `database.default` | string | `main` | 默认连接名称 |
 
-MySQL/PostgreSQL 连接时需在 YAML 中额外配置 `host`、`port`、`username`、`password`。
+**连接配置** (`database.connections.<name>.*`)：
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `driver` | string | `gormdriver` | 驱动注册名 |
+| `engine` | string | `sqlite` | 引擎：sqlite / mysql / postgres / mssql |
+| `database` | string | `database/gofast.db` | 数据库名/文件路径 |
+| `host` | string | `localhost` | 主机地址 |
+| `port` | int | `3306` | 端口 |
+| `username` | string | `root` | 用户名 |
+| `password` | string | `""` | 密码 |
+| `charset` | string | `utf8mb4` | 字符集 |
+| `loc` | string | `Local` | 时区 |
+| `ssl_mode` | string | `""` | SSL 模式（PostgreSQL） |
+| `max_idle_conns` | int | `10` | 最大空闲连接数 |
+| `max_open_conns` | int | `100` | 最大打开连接数 |
+| `conn_max_lifetime` | int | `60` | 连接最大存活时间（分钟） |
+| `conn_max_idle_time` | int | `30` | 连接最大空闲时间（分钟） |
+| `log_level` | string | `info` | GORM 日志级别：silent / error / warn / info |
+| `slow_threshold` | int | `200` | 慢查询阈值（毫秒），0 表示不记录 |
 
 ### log -- 日志
 
@@ -231,17 +247,35 @@ MySQL/PostgreSQL 连接时需在 YAML 中额外配置 `host`、`port`、`usernam
 | 键 | 类型 | 默认值 | 说明 |
 |----|------|--------|------|
 | `filesystem.default` | string | `local` | 默认磁盘名称 |
-| `filesystem.disks.local.driver` | string | `local` | 驱动类型 |
+| `filesystem.disks.<name>.driver` | string | `local` | 驱动：local / oss / cos / minio / s3 |
+
+**local 驱动参数：**
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
 | `filesystem.disks.local.root` | string | `storage/app` | 存储根目录 |
 | `filesystem.disks.local.url` | string | `/storage` | 访问 URL 前缀 |
+
+**OSS 驱动参数：** `key`, `secret`, `bucket`, `url`, `endpoint`
+
+**COS 驱动参数：** `key`, `secret`, `url`
+
+**MinIO 驱动参数：** `key`, `secret`, `bucket`, `url`, `endpoint`, `region`, `ssl`
+
+**S3 驱动参数：** `key`, `secret`, `region`, `bucket`, `url`, `token`, `endpoint`, `cdn`, `object_canned_acl`, `use_path_style`
 
 ### cache -- 缓存
 
 | 键 | 类型 | 默认值 | 说明 |
 |----|------|--------|------|
-| `cache.driver` | string | `memory` | 缓存驱动 |
+| `cache.driver` | string | `memory` | 缓存驱动：memory / redis |
 | `cache.memory.shard_count` | int | `32` | 内存分片数 |
 | `cache.memory.clean_interval` | int | `60` | 清理间隔（秒） |
+| `cache.redis.host` | string | `127.0.0.1` | Redis 主机地址 |
+| `cache.redis.port` | int | `6379` | Redis 端口 |
+| `cache.redis.password` | string | `""` | Redis 密码 |
+| `cache.redis.db` | int | `0` | Redis 数据库编号 |
+| `cache.redis.prefix` | string | `""` | 缓存键前缀 |
 
 ### grpc -- gRPC 服务
 

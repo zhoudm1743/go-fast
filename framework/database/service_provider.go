@@ -22,13 +22,6 @@ func (sp *ServiceProvider) Register(app foundation.Application) {
 		return NewDBManager(cfg, log)
 	})
 
-	// 保留旧的 "orm" 服务以向后兼容
-	// Deprecated: 请使用 "db" 服务
-	app.Singleton("orm", func(app foundation.Application) (any, error) {
-		cfg := app.MustMake("config").(contracts.Config)
-		log := app.MustMake("log").(contracts.Log)
-		return NewOrm(cfg, log)
-	})
 }
 
 func (sp *ServiceProvider) Boot(app foundation.Application) error {
@@ -36,12 +29,6 @@ func (sp *ServiceProvider) Boot(app foundation.Application) error {
 		// 关闭新的 db 服务
 		if db, err := app.Make("db"); err == nil {
 			if closer, ok := db.(contracts.DB); ok {
-				_ = closer.Close()
-			}
-		}
-		// 关闭旧的 orm 服务（向后兼容）
-		if orm, err := app.Make("orm"); err == nil {
-			if closer, ok := orm.(contracts.Orm); ok {
 				_ = closer.Close()
 			}
 		}

@@ -45,26 +45,10 @@ type ConfigProvider interface {
 	ConfigDefaults() map[string]any
 }
 
-// Migrator 可选接口：声明需要自动迁移的数据库模型（旧 ORM 接口）。
-//
-// 框架在所有 Provider Boot 完成后、且 "orm" 服务可用时，自动调用 Migrate。
-// 插件无需在 Boot() 中手动获取 ORM 并调用 AutoMigrate。
-//
-// Deprecated: 请改用 DBMigrator，此接口将在下一主版本移除。
-//
-// 使用示例：
-//
-//	func (sp *ServiceProvider) Migrate(orm contracts.Orm) error {
-//	    return orm.AutoMigrate(&Post{}, &Comment{})
-//	}
-type Migrator interface {
-	Migrate(orm contracts.Orm) error
-}
 
-// DBMigrator 可选接口：声明需要自动迁移的数据库模型（新 DB 接口）。
+// DBMigrator 可选接口：声明需要自动迁移的数据库模型。
 //
 // 框架在所有 Provider Boot 完成后、且 "db" 服务可用时，自动调用 MigrateDB。
-// 推荐优先实现此接口以替代旧的 Migrator。
 //
 // 使用示例：
 //

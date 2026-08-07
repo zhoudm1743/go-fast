@@ -43,9 +43,6 @@ type Application interface {
 	Log() contracts.Log
 	// Cache 获取缓存服务（等同于 MustMake("cache").(contracts.Cache)）。
 	Cache() contracts.Cache
-	// Orm 获取 ORM 数据库服务（等同于 MustMake("orm").(contracts.Orm)）。
-	// Deprecated: 请使用 DB()，此方法将在下一主版本移除。
-	Orm() contracts.Orm
 	// DB 获取数据库管理器（等同于 MustMake("db").(contracts.DB)）。
 	DB() contracts.DB
 	// Route 获取 HTTP 路由服务（等同于 MustMake("route").(contracts.Route)）。
@@ -151,28 +148,7 @@ func (a *application) Boot() {
 		}
 	}
 
-	// Phase 3: 自动执行 Migrator（仅当有 Provider 实现了 Migrator 接口时才实例化 orm）
-	{
-		hasMigrator := false
-		for _, p := range immediate {
-			if _, ok := p.(Migrator); ok {
-				hasMigrator = true
-				break
-			}
-		}
-		if hasMigrator && a.Bound("orm") {
-			orm := a.MustMake("orm").(contracts.Orm)
-			for _, p := range immediate {
-				if m, ok := p.(Migrator); ok {
-					if err := m.Migrate(orm); err != nil {
-						panic(fmt.Sprintf("[GoFast] migrate failed: %v", err))
-					}
-				}
-			}
-		}
-	}
-
-	// Phase 3b: 自动执行 DBMigrator（如果 db 服务可用）
+	// Phase 3: 自动执行 DBMigrator（如果 db 服务可用）
 	if a.Bound("db") {
 		db := a.MustMake("db").(contracts.DB)
 		for _, p := range immediate {
@@ -223,15 +199,6 @@ func (a *application) bootDeferredIfNeeded(key string) {
 // runDeferredLifecycleHooks 对延迟初始化的 Provider 执行可选接口检测。
 // 在 Provider 完成 Register+Boot 后由 bootDeferredIfNeeded 内部调用。
 func (a *application) runDeferredLifecycleHooks(p ServiceProvider) {
-	// Migrator（旧 ORM 接口）
-	if a.Bound("orm") {
-		if m, ok := p.(Migrator); ok {
-			orm := a.MustMake("orm").(contracts.Orm)
-			if err := m.Migrate(orm); err != nil {
-				panic(fmt.Sprintf("[GoFast] deferred migrate failed: %v", err))
-			}
-		}
-	}
 	// DBMigrator（新 DB 接口）
 	if a.Bound("db") {
 		if m, ok := p.(DBMigrator); ok {
@@ -340,9 +307,6 @@ func (a *application) Cache() contracts.Cache {
 	return a.MustMake("cache").(contracts.Cache)
 }
 
-func (a *application) Orm() contracts.Orm {
-	return a.MustMake("orm").(contracts.Orm)
-}
 
 func (a *application) DB() contracts.DB {
 	return a.MustMake("db").(contracts.DB)
