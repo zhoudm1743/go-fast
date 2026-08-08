@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -64,16 +65,34 @@ type configImpl struct {
 	mu    sync.RWMutex // 保护 Set/SetDefaults/Add 与 Get 系列之间的并发读写
 }
 
-// NewConfig 从配置文件创建 Config 实例。
+// NewConfig 创建 Config 实例。
+// path 指向的 YAML 为可选覆盖层：文件不存在时跳过加载，仅依赖 Go 配置默认值；
+// 文件存在但无法读取/解析时仍返回错误。
 func NewConfig(path string) (contracts.Config, error) {
 	v := viper.New()
-	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
+	v.SetConfigFile(path)
 
 	if err := v.ReadInConfig(); err != nil {
+		if isConfigFileMissing(err) {
+			return &configImpl{viper: v}, nil
+		}
 		return nil, fmt.Errorf("[GoFast] 读取配置文件失败: %w", err)
 	}
 	return &configImpl{viper: v}, nil
+}
+
+// isConfigFileMissing 判断是否为「配置文件不存在」（可选加载场景）。
+// SetConfigFile 时 viper 通常返回 os.ErrNotExist；未指定绝对路径时可能是 ConfigFileNotFoundError。
+func isConfigFileMissing(err error) bool {
+	if err == nil {
+		return false
+	}
+	var notFound viper.ConfigFileNotFoundError
+	if errors.As(err, &notFound) {
+		return true
+	}
+	return errors.Is(err, os.ErrNotExist)
 }
 
 // Env 读取操作系统环境变量，支持默认值。

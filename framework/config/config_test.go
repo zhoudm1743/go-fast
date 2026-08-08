@@ -37,13 +37,29 @@ server:
 	}
 }
 
-func TestNewConfig_InvalidPath(t *testing.T) {
+func TestNewConfig_MissingFile_Optional(t *testing.T) {
 	cfg, err := NewConfig("/nonexistent/path/config.yaml")
+	if err != nil {
+		t.Fatalf("NewConfig 对不存在的 YAML 应可选跳过，不应报错: %v", err)
+	}
+	if cfg == nil {
+		t.Fatal("缺失 YAML 时仍应返回可用 Config 实例")
+	}
+	// 仅依赖 Go 默认值 / 运行时 Set
+	cfg.Add("app", map[string]any{"name": "GoFast"})
+	if v := cfg.GetString("app.name"); v != "GoFast" {
+		t.Fatalf("期望 GoFast，得到 %v", v)
+	}
+}
+
+func TestNewConfig_InvalidYAML_StillErrors(t *testing.T) {
+	path := tempConfigFile(t, "server:\n  port: [unclosed")
+	cfg, err := NewConfig(path)
 	if err == nil {
-		t.Fatal("NewConfig 对不存在的文件应返回错误")
+		t.Fatal("存在但无法解析的 YAML 应返回错误")
 	}
 	if cfg != nil {
-		t.Fatal("错误时应返回 nil config")
+		t.Fatal("解析失败时应返回 nil config")
 	}
 }
 
