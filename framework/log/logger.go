@@ -200,7 +200,11 @@ func newConsoleCore(cfg contracts.Config, lvl zap.AtomicLevel) zapcore.Core {
 		enc = newPrettyConsoleEncoder(encCfg, colorEnabled, tsFmt)
 	}
 
-	return zapcore.NewCore(enc, zapcore.Lock(os.Stdout), lvl)
+	core := zapcore.NewCore(enc, zapcore.Lock(os.Stdout), lvl)
+	if format != "json" {
+		core = &fieldMergeCore{Core: core}
+	}
+	return core
 }
 
 func newFileCore(cfg contracts.Config, lvl zap.AtomicLevel, path string) (zapcore.Core, io.Closer, error) {
@@ -244,6 +248,39 @@ func newFileCore(cfg contracts.Config, lvl zap.AtomicLevel, path string) (zapcor
 	}
 
 	return zapcore.NewCore(enc, zapcore.AddSync(lj), lvl), lj, nil
+}
+
+// =============================================================================
+// fieldMergeCore：拦截 With() 积累字段，在 Write() 时合并进 fields 参数
+// zap v1.28 ioCore.With() 把字段存入 encoder 内部状态，
+// 我们的 prettyConsoleEncoder.EncodeEntry 只使用 fields 参数，
+// 因此需要本 wrapper 把积累字段透传进 fields 参数。
+// =============================================================================
+
+type fieldMergeCore struct {
+	zapcore.Core
+	prefixFields []zapcore.Field
+}
+
+func (c *fieldMergeCore) With(fields []zapcore.Field) zapcore.Core {
+	return &fieldMergeCore{
+		Core:         c.Core.With(fields),
+		prefixFields: append(c.prefixFields, fields...),
+	}
+}
+
+func (c *fieldMergeCore) Write(ent zapcore.Entry, fields []zapcore.Field) error {
+	allFields := make([]zapcore.Field, len(c.prefixFields)+len(fields))
+	copy(allFields, c.prefixFields)
+	copy(allFields[len(c.prefixFields):], fields)
+	return c.Core.Write(ent, allFields)
+}
+
+func (c *fieldMergeCore) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if c.Enabled(ent.Level) {
+		return ce.AddCore(ent, c)
+	}
+	return ce
 }
 
 // =============================================================================
