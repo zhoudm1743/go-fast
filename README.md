@@ -1,9 +1,30 @@
 # GoFast
 
-> GoFast -- 一个轻量、可扩展的 Go 语言快速开发框架。整合 IoC 容器、ServiceProvider 生命周期、Facade 门面、Go 配置文件、结构化日志、GORM 数据库、验证器和可插拔文件存储等企业级能力，帮助团队以最少样板代码搭建可靠的后端服务。
+> GoFast 项目骨架 -- 基于 [go-fast-framework](https://github.com/zhoudm1743/go-fast-framework) 的快速开发模板。开箱即用的项目结构、配置与示例，帮助团队以最少样板代码搭建可靠的后端服务。
 
 [![Go Version](https://img.shields.io/badge/Go-1.25+-blue.svg)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+---
+
+## 架构
+
+本项目为**应用骨架**，框架核心已拆分为独立模块：
+
+| 仓库 | 说明 |
+|------|------|
+| [go-fast-framework](https://github.com/zhoudm1743/go-fast-framework) | 框架核心：IoC 容器、ServiceProvider、Facade、日志、数据库、缓存、HTTP 路由等 |
+| **go-fast** (当前仓库) | 项目骨架：业务代码、路由注册、配置、启动引导 |
+
+---
+
+## 快速开始
+
+```bash
+git clone https://github.com/zhoudm1743/go-fast.git
+cd go-fast
+go run main.go
+```
 
 ---
 
@@ -25,16 +46,6 @@
 
 ---
 
-## 快速开始
-
-```bash
-git clone https://github.com/zhoudm1743/go-fast.git
-cd GoFast
-go run main.go
-```
-
----
-
 ## 文档
 
 | 文档 | 说明 |
@@ -53,22 +64,24 @@ go run main.go
 ## 项目结构
 
 ```
-GoFast/
+go-fast/
 ├── app/                         # 业务代码
 │   ├── console/
 │   │   └── commands/            # 自定义 Fast 命令
+│   ├── events/                  # 事件定义
 │   ├── http/
-│   │   ├── admin/
+│   │   ├── admin/               # 后台
 │   │   │   ├── controllers/     # 后台控制器
 │   │   │   ├── middleware/      # 后台中间件
 │   │   │   └── requests/        # 后台请求结构体
-│   │   └── app/
+│   │   └── app/                 # 前台
 │   │       ├── controllers/     # 前台控制器
 │   │       ├── middleware/      # 前台中间件
 │   │       └── requests/        # 前台请求结构体
+│   ├── jobs/                    # 队列任务
+│   ├── listeners/               # 事件监听器
 │   ├── models/                  # 数据模型
-│   ├── providers/               # 自定义 ServiceProvider
-│   └── rules/                   # 自定义验证规则
+│   └── providers/               # 自定义 ServiceProvider
 ├── bootstrap/
 │   ├── app.go                   # 应用引导 & Provider 列表
 │   └── commands.go              # Fast 命令注册入口
@@ -85,28 +98,18 @@ GoFast/
 │   └── view.go                  # 视图引擎配置默认值
 ├── database/
 │   └── migrations/              # 数据库迁移
+├── docs/                        # 文档
+├── example/                     # 最小示例工程
+├── resources/                   # 静态资源 & 视图模板
+│   ├── static/                  # 静态文件（CSS/JS/图片）
+│   └── views/                   # HTML 模板
 ├── routes/
 │   ├── api.go                   # 路由统一入口
 │   ├── app.go                   # 前台路由注册
 │   └── admin.go                 # 后台路由注册
-├── framework/                   # 框架核心
-│   ├── foundation/              # IoC 容器 & Application
-│   ├── contracts/               # 服务接口定义
-│   ├── facades/                 # 静态门面
-│   ├── config/                  # 配置服务
-│   ├── log/                     # 日志服务
-│   ├── cache/                   # 缓存服务
-│   ├── database/                # 数据库服务
-│   ├── filesystem/              # 文件存储服务
-│   ├── http/                    # HTTP 路由服务
-│   ├── jwt/                     # JWT 鉴权服务
-│   ├── event/                   # 事件系统
-│   ├── queue/                   # 队列系统
-│   ├── schedule/                # 任务调度
-│   ├── fast/                    # Fast 控制台
-│   ├── id/                      # 时序 ID 生成
-│   └── utils/                   # 工具函数
-├── docs/                        # 文档
+├── storage/                     # 运行时存储
+│   ├── app/                     # 本地文件存储
+│   └── logs/                    # 日志文件
 ├── main.go                      # 入口
 └── go.mod
 ```
@@ -115,4 +118,4 @@ GoFast/
 
 ## License
 
-[MIT](LICENSE)
+[Apache 2.0](LICENSE)
