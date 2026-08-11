@@ -273,8 +273,8 @@ github.com/valyala/tcplisten v1.0.0/go.mod h1:T0xQ8SeCZGxckz9qRXTfG43PvQ/mcWh7Fw
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zeebo/xxh3 v1.0.2 h1:xZmwmqxHZA8AI603jOQ0tMqmBr9lPeFwGg6d+xy9DC0=
 github.com/zeebo/xxh3 v1.0.2/go.mod h1:5NWz9Sef7zIDm2JHfFlcQvNekmcEl9ekUZQQKCYaDcA=
-github.com/zhoudm1743/go-fast-framework v0.5.0 h1:So2UgQO8KNu6MDJVnOTr91lPIAK4cPjyQTGjUarVEkY=
-github.com/zhoudm1743/go-fast-framework v0.5.0/go.mod h1:+F9BIbscx2Ev/fKyVwxf1diwIEp+UmUF46mgdAF0w0c=
+github.com/zhoudm1743/go-fast-framework v0.6.0 h1:lWdq5/K9G1z3Pbsd3T4o6HPo0ITVDkcA78xfC0LGjm4=
+github.com/zhoudm1743/go-fast-framework v0.6.0/go.mod h1:+F9BIbscx2Ev/fKyVwxf1diwIEp+UmUF46mgdAF0w0c=
 go.mongodb.org/mongo-driver/v2 v2.5.0 h1:yXUhImUjjAInNcpTcAlPHiT7bIXhshCTL3jVBkF3xaE=
 go.mongodb.org/mongo-driver/v2 v2.5.0/go.mod h1:yOI9kBsufol30iFsl1slpdq1I0eHPzybRWdyYUs8K/0=
 go.uber.org/atomic v1.11.0 h1:ZvwS0R+56ePWxUNi+Atn9dWONBPp/AUETXlHW0DxSjE=
