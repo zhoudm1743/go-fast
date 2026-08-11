@@ -297,7 +297,7 @@ type CreateUserRequest struct {
 
 ### `make:utils`
 
-在 `framework/utils/` 下生成一个工具集文件，遵循现有 `XxxUtil = xxxUtil{}` 规范。
+在 go-fast-framework 的 `utils/` 下生成一个工具集文件，遵循现有 `XxxUtil = xxxUtil{}` 规范。
 
 ```bash
 go run . fast make:utils <Name>
@@ -310,7 +310,7 @@ go run . fast make:utils <Name>
 **示例**
 
 ```bash
-# 生成 framework/utils/jwt.go
+# 生成 utils/jwt.go
 go run . fast make:utils Jwt
 ```
 

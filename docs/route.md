@@ -233,8 +233,8 @@ package routes
 import (
     adminCtrl "go-fast/app/http/admin/controllers"
     "go-fast/app/http/admin/middleware"
-    "go-fast/framework/contracts"
-    "go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func RegisterAdmin() {
@@ -253,8 +253,8 @@ package routes
 
 import (
     appCtrl "go-fast/app/http/app/controllers"
-    "go-fast/framework/contracts"
-    "go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func RegisterApp() {

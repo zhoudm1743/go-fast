@@ -170,8 +170,8 @@ package controllers
 import (
     "net/http"
     "go-fast/app/models"
-    "go-fast/framework/contracts"
-    "go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 type UserController struct{}
@@ -222,7 +222,7 @@ type UpdateUserRequest struct {
 
 ### 4.4 统一响应结构
 
-GoFast 已在 `framework/http` 内置标准响应结构：
+go-fast-framework 已在 `http` 包内置标准响应结构：
 
 ```go
 type Response struct {
@@ -411,8 +411,8 @@ package routes
 import (
     adminControllers "go-fast/app/http/admin/controllers"
     adminMiddleware "go-fast/app/http/admin/middleware"
-    "go-fast/framework/contracts"
-    "go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func RegisterAdmin() {
@@ -432,8 +432,8 @@ package routes
 import (
     appControllers "go-fast/app/http/app/controllers"
     appMiddleware "go-fast/app/http/app/middleware"
-    "go-fast/framework/contracts"
-    "go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func RegisterApp() {
@@ -479,7 +479,7 @@ package middleware
 import (
     "net/http"
     "strings"
-    "go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 // Auth 前台用户鉴权中间件。
@@ -507,7 +507,7 @@ package middleware
 import (
     "net/http"
     "strings"
-    "go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 func AdminAuth(ctx contracts.Context) error {

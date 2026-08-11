@@ -23,7 +23,7 @@ GoFast 通过接口检测模型是否实现了对应钩子，各 ORM 驱动在�
 `database.Model` 实现了 `contracts.IDAutoGenerator` 接口，驱动层在 Create 前自动调用，生成时序 ID 主键（16 字符）：
 
 ```go
-// framework/database/model.go（框架内部）
+// database/model.go（go-fast-framework 内部）
 func (m *Model) AutoGenerateID() {
     if m.ID == "" {
         m.ID = id.New()
