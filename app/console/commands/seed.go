@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/zhoudm1743/go-fast/app/console/commands/seeders"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
-	fast "github.com/zhoudm1743/go-fast/framework/fast"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
+	fast "github.com/zhoudm1743/go-fast-framework/fast"
 )
 
 // SeedCommand 数据库种子命令。

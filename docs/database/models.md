@@ -11,7 +11,7 @@
 ```go
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 type User struct {
     database.Model                                          // ID + CreatedAt + UpdatedAt
@@ -137,7 +137,7 @@ func (User) TableName() string { return "sys_user" }
 ```go
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 // Category 文章分类
 type Category struct {

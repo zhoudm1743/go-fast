@@ -1,7 +1,7 @@
 package jobs
 
 import (
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // ProcessOrder 处理订单队列任务示例。

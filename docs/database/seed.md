@@ -34,7 +34,7 @@ bootstrap/
 // app/console/commands/seeders/seeder.go
 package seeders
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 type Seeder interface {
     Run(q contracts.Query) error
@@ -53,7 +53,7 @@ package seeders
 
 import (
     "github.com/zhoudm1743/go-fast/app/models"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
     "golang.org/x/crypto/bcrypt"
 )
 
@@ -82,7 +82,7 @@ func (s *UserSeeder) Run(q contracts.Query) error {
 // app/console/commands/seeders/database_seeder.go
 package seeders
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 type DatabaseSeeder struct{}
 

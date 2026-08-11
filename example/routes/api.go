@@ -2,8 +2,8 @@ package routes
 
 import (
 	"github.com/zhoudm1743/go-fast/example/app/http/controllers"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // Register 注册所有路由。

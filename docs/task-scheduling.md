@@ -14,9 +14,9 @@ GoFast 任务调度基于 `robfig/cron/v3` 实现，允许你在代码中流畅�
 ```go
 import (
     "fmt"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
-    goschedule "github.com/zhoudm1743/go-fast/framework/schedule"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
+    goschedule "github.com/zhoudm1743/go-fast-framework/schedule"
 )
 
 func Boot() foundation.Application {

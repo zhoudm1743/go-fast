@@ -65,7 +65,7 @@ filesystem:
 在 `bootstrap/app.go` 中注册 Filesystem 服务提供者：
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/filesystem"
+import "github.com/zhoudm1743/go-fast-framework/filesystem"
 
 app.Register(&filesystem.ServiceProvider{})
 ```
@@ -77,7 +77,7 @@ app.Register(&filesystem.ServiceProvider{})
 通过 `facades.Storage()` 获取默认磁盘实例：
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast-framework/facades"
 
 storage := facades.Storage()
 ```

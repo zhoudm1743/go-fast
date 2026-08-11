@@ -1,6 +1,6 @@
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 // User 用户模型。
 // 嵌入 database.Model 自动获得时序 ID 主键、CreatedAt、UpdatedAt。

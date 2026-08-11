@@ -1,6 +1,6 @@
 package seeders
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 // DatabaseSeeder 根 Seeder，统一入口。
 // 按顺序调用所有子 Seeder，注意有外键依赖时先插父表。

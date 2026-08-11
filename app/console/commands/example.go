@@ -3,8 +3,8 @@ package commands
 import (
 	"strings"
 
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	fast "github.com/zhoudm1743/go-fast/framework/fast"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	fast "github.com/zhoudm1743/go-fast-framework/fast"
 )
 
 // ExampleCommand 示例命令，演示如何定义并使用 Fast 命令。

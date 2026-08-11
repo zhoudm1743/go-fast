@@ -208,7 +208,7 @@ driver := facades.DB().Driver()          // 默认连接
 driver := facades.DB().Driver("main")   // 指定连接
 
 // 若使用 GORM 驱动，可获取原始 *gorm.DB
-import gormdriver "github.com/zhoudm1743/go-fast/framework/database/drivers/gormdriver"
+import gormdriver "github.com/zhoudm1743/go-fast-framework/database/drivers/gormdriver"
 if gd, ok := driver.(*gormdriver.GormDriver); ok {
     rawDB := gd.RawDB() // *gorm.DB
 }

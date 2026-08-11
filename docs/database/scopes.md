@@ -95,7 +95,7 @@ facades.DB().Query().
 // app/scopes/post_scopes.go
 package scopes
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 // Published 只查已发布的文章
 func Published(q contracts.Query) contracts.Query {

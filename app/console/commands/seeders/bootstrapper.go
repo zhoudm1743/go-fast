@@ -3,8 +3,8 @@ package seeders
 import (
 	"fmt"
 
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // TenantBootstrapper 租户初始化工具，封装「迁移 + 种子」两个步骤。

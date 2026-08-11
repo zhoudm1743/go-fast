@@ -90,7 +90,7 @@ go run . fast make:model OrderItem --soft-delete
 ```go
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 // Post 模型。
 // 嵌入 database.Model 自动获得时序 ID 主键、CreatedAt、UpdatedAt。
@@ -207,7 +207,7 @@ go run . fast make:provider RedisServiceProvider
 ```go
 package providers
 
-import "github.com/zhoudm1743/go-fast/framework/foundation"
+import "github.com/zhoudm1743/go-fast-framework/foundation"
 
 type RedisServiceProvider struct{}
 
@@ -334,7 +334,7 @@ type jwtUtil struct{}
 **使用方式**（在任意业务代码中）：
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/utils"
+import "github.com/zhoudm1743/go-fast-framework/utils"
 
 token := utils.JwtUtil.GenerateToken(userID)
 ```
@@ -363,9 +363,9 @@ type ConsoleCommand interface {
 package commands
 
 import (
-    "github.com/zhoudm1743/go-fast/framework/fast"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/fast"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 type SendEmailsCommand struct{}
@@ -551,7 +551,7 @@ package bootstrap
 
 import (
     "github.com/zhoudm1743/go-fast/app/console/commands"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 func Commands() []contracts.ConsoleCommand {

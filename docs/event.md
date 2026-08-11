@@ -19,8 +19,8 @@ package bootstrap
 import (
     "github.com/zhoudm1743/go-fast/app/events"
     "github.com/zhoudm1743/go-fast/app/listeners"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    goevent "github.com/zhoudm1743/go-fast/framework/event"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    goevent "github.com/zhoudm1743/go-fast-framework/event"
 )
 
 func Boot() foundation.Application {
@@ -47,7 +47,7 @@ func Boot() foundation.Application {
 // app/events/order_shipped.go
 package events
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 type OrderShipped struct{}
 
@@ -66,7 +66,7 @@ package listeners
 
 import (
     "fmt"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 type SendShipmentNotification struct{}
@@ -129,8 +129,8 @@ package controllers
 
 import (
     "github.com/zhoudm1743/go-fast/app/events"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func (c *OrderController) Ship(ctx http.Context) {

@@ -1,6 +1,6 @@
 package events
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 // OrderShipped 订单已发货事件示例。
 type OrderShipped struct{}

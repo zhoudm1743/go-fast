@@ -52,8 +52,8 @@ func (j *ProcessOrder) Handle(args ...any) error {
 ```go
 import (
     "github.com/zhoudm1743/go-fast/app/jobs"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 err := facades.Queue().Job(&jobs.ProcessOrder{}, []contracts.QueueArg{

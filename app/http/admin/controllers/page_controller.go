@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/zhoudm1743/go-fast/app/models"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // PageController 演示 HTML 模板渲染功能。
@@ -36,7 +36,7 @@ import (
 //     import (
 //         "io/fs"
 //         "net/http"
-//         goview "github.com/zhoudm1743/go-fast/framework/http/view"
+//         goview "github.com/zhoudm1743/go-fast-framework/http/view"
 //     )
 //
 //     func (sp *EmbedProvider) Register(app foundation.Application) {

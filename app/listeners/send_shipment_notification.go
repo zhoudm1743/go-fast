@@ -1,8 +1,8 @@
 package listeners
 
 import (
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // SendShipmentNotification 发货通知监听器示例。

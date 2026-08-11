@@ -53,7 +53,7 @@ database:
 // app/models/user.go
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 type User struct {
     database.Model                                          // 时序 ID 主键 + 时间戳

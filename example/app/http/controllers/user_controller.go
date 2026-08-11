@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/zhoudm1743/go-fast/example/app/models"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // UserController 用户 CRUD 控制器示例。

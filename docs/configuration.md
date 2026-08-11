@@ -51,7 +51,7 @@ Go 配置文件 (config/*.go init)  <  YAML 文件 (config/config.yaml)  <  运�
 // config/myapp.go
 package config
 
-import fwconfig "github.com/zhoudm1743/go-fast/framework/config"
+import fwconfig "github.com/zhoudm1743/go-fast-framework/config"
 
 func init() {
     fwconfig.Add("myapp", map[string]any{
@@ -68,7 +68,7 @@ func init() {
 访问配置：
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast-framework/facades"
 
 endpoint := facades.Config().GetString("myapp.api_endpoint")
 timeout  := facades.Config().GetInt("myapp.timeout", 10)
@@ -115,7 +115,7 @@ database:
 ### 通过 Facade
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast-framework/facades"
 
 // 通用读取
 val := facades.Config().Get("app.name")

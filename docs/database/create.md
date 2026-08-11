@@ -175,7 +175,7 @@ if err := facades.DB().Query().
 ```go
 import (
     "errors"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 if err := facades.DB().Query().Create(&user); err != nil {

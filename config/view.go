@@ -1,6 +1,6 @@
 package config
 
-import fwconfig "github.com/zhoudm1743/go-fast/framework/config"
+import fwconfig "github.com/zhoudm1743/go-fast-framework/config"
 
 func init() {
 	fwconfig.Add("view", map[string]any{

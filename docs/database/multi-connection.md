@@ -271,7 +271,7 @@ driver.AutoMigrate(&models.User{})
 ### 获取原始 *gorm.DB（逃生口）
 
 ```go
-import gormdriver "github.com/zhoudm1743/go-fast/framework/database/drivers/gormdriver"
+import gormdriver "github.com/zhoudm1743/go-fast-framework/database/drivers/gormdriver"
 
 driver := facades.DB().Driver("main")
 if gd, ok := driver.(*gormdriver.GormDriver); ok {
@@ -312,7 +312,7 @@ if err2 != nil {
 ```go
 // bootstrap/app.go 或 ServiceProvider.Register 中
 import (
-    "github.com/zhoudm1743/go-fast/framework/database"
+    "github.com/zhoudm1743/go-fast-framework/database"
     myxorm "github.com/my-org/gofast-xorm"
 )
 

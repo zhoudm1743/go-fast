@@ -3,19 +3,19 @@ package bootstrap
 import (
 	_ "github.com/zhoudm1743/go-fast/config" // 触发 Go 配置文件的 init() 注册
 
-	"github.com/zhoudm1743/go-fast/framework/cache"
-	"github.com/zhoudm1743/go-fast/framework/config"
-	"github.com/zhoudm1743/go-fast/framework/database"
-	goevent "github.com/zhoudm1743/go-fast/framework/event"
-	"github.com/zhoudm1743/go-fast/framework/facades"
-	"github.com/zhoudm1743/go-fast/framework/fast"
-	"github.com/zhoudm1743/go-fast/framework/filesystem"
-	"github.com/zhoudm1743/go-fast/framework/foundation"
-	gohttp "github.com/zhoudm1743/go-fast/framework/http"
-	gojwt "github.com/zhoudm1743/go-fast/framework/jwt"
-	"github.com/zhoudm1743/go-fast/framework/log"
-	goqueue "github.com/zhoudm1743/go-fast/framework/queue"
-	goschedule "github.com/zhoudm1743/go-fast/framework/schedule"
+	"github.com/zhoudm1743/go-fast-framework/cache"
+	"github.com/zhoudm1743/go-fast-framework/config"
+	"github.com/zhoudm1743/go-fast-framework/database"
+	goevent "github.com/zhoudm1743/go-fast-framework/event"
+	"github.com/zhoudm1743/go-fast-framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/fast"
+	"github.com/zhoudm1743/go-fast-framework/filesystem"
+	"github.com/zhoudm1743/go-fast-framework/foundation"
+	gohttp "github.com/zhoudm1743/go-fast-framework/http"
+	gojwt "github.com/zhoudm1743/go-fast-framework/jwt"
+	"github.com/zhoudm1743/go-fast-framework/log"
+	goqueue "github.com/zhoudm1743/go-fast-framework/queue"
+	goschedule "github.com/zhoudm1743/go-fast-framework/schedule"
 )
 
 // Boot 创建并引导 GoFast 应用。

@@ -32,7 +32,7 @@ database:
 // app/models/post.go
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 type Post struct {
     database.Model                // 嵌入：时序 ID 主键 + CreatedAt + UpdatedAt
@@ -52,8 +52,8 @@ package providers
 
 import (
     "github.com/zhoudm1743/go-fast/app/models"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/foundation"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/foundation"
 )
 
 type DatabaseProvider struct{}
@@ -79,7 +79,7 @@ app.SetProviders([]foundation.ServiceProvider{
 ## 第四步：CRUD 操作
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast-framework/facades"
 
 // ── 创建 ──────────────────────────────────────────────────────
 post := &models.Post{Title: "Hello GoFast", Content: "内容..."}
@@ -118,8 +118,8 @@ import (
     "net/http"
 
     "github.com/zhoudm1743/go-fast/app/models"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 type PostController struct{}

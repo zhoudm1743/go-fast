@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	"github.com/zhoudm1743/go-fast/bootstrap"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 	"github.com/zhoudm1743/go-fast/routes"
 )
 

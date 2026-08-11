@@ -31,7 +31,7 @@ GoFast 支持两种配置方式：**YAML 文件** 和 **Go 源码文件**，详�
 ```go
 package config
 
-import fwconfig "github.com/zhoudm1743/go-fast/framework/config"
+import fwconfig "github.com/zhoudm1743/go-fast-framework/config"
 
 func init() {
     fwconfig.Add("app", map[string]any{
@@ -121,7 +121,7 @@ GoFast 采用**控制器自注册**模式：控制器在 `Boot()` 中声明路�
 // app/http/app/controllers/user_controller.go
 package controllers
 
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 type UserController struct{}
 
@@ -149,8 +149,8 @@ package routes
 import (
     appControllers "github.com/zhoudm1743/go-fast/app/http/app/controllers"
     appMiddleware "github.com/zhoudm1743/go-fast/app/http/app/middleware"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func RegisterApp() {
@@ -178,8 +178,8 @@ package routes
 import (
     adminControllers "github.com/zhoudm1743/go-fast/app/http/admin/controllers"
     adminMiddleware "github.com/zhoudm1743/go-fast/app/http/admin/middleware"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/facades"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 func RegisterAdmin() {
@@ -217,7 +217,7 @@ facades.Http.Route().Run()    // 启动 HTTP 服务器
 GoFast 提供静态门面（Facade），让你无需手动从容器解析服务：
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast-framework/facades"
 
 // 配置
 port := facades.Config().GetInt("server.port", 3000)
@@ -255,7 +255,7 @@ GoFast 内置时序 ID 主键自动生成：
 ```go
 package models
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 // User 业务模型，嵌入 database.Model 即自带时序 ID 主键。
 type User struct {

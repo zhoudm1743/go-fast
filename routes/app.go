@@ -3,8 +3,8 @@ package routes
 import (
 	appControllers "github.com/zhoudm1743/go-fast/app/http/app/controllers"
 	appMiddleware "github.com/zhoudm1743/go-fast/app/http/app/middleware"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // RegisterApp 注册前台路由，统一前缀 /api/v1。

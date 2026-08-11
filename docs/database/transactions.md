@@ -89,7 +89,7 @@ err := facades.DB().Transaction(func(tx contracts.Query) error {
 使用预定义选项：
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/contracts"
+import "github.com/zhoudm1743/go-fast-framework/contracts"
 
 // READ COMMITTED
 err := facades.DB().Transaction(func(tx contracts.Query) error {
@@ -117,7 +117,7 @@ err := facades.DB().Transaction(func(tx contracts.Query) error {
 ```go
 import (
     "database/sql"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 opts := contracts.TxOpts(sql.LevelReadCommitted, false)

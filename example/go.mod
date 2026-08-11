@@ -2,7 +2,7 @@ module github.com/zhoudm1743/go-fast/example
 
 go 1.25.5
 
-require github.com/zhoudm1743/go-fast v0.4.1
+require github.com/zhoudm1743/go-fast-framework v0.5.0
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -116,5 +116,3 @@ require (
 	modernc.org/memory v1.5.0 // indirect
 	modernc.org/sqlite v1.23.1 // indirect
 )
-
-replace github.com/zhoudm1743/go-fast => ../

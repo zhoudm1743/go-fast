@@ -6,8 +6,8 @@ import (
 
 	"github.com/zhoudm1743/go-fast/app/http/admin/requests"
 	"github.com/zhoudm1743/go-fast/app/models"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
 )
 
 // UserController 前台用户自服务控制器。

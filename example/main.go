@@ -7,14 +7,14 @@ import (
 
 	"github.com/zhoudm1743/go-fast/example/app/models"
 	"github.com/zhoudm1743/go-fast/example/routes"
-	"github.com/zhoudm1743/go-fast/framework/cache"
-	"github.com/zhoudm1743/go-fast/framework/config"
-	"github.com/zhoudm1743/go-fast/framework/database"
-	"github.com/zhoudm1743/go-fast/framework/facades"
-	"github.com/zhoudm1743/go-fast/framework/filesystem"
-	"github.com/zhoudm1743/go-fast/framework/foundation"
-	gohttp "github.com/zhoudm1743/go-fast/framework/http"
-	"github.com/zhoudm1743/go-fast/framework/log"
+	"github.com/zhoudm1743/go-fast-framework/cache"
+	"github.com/zhoudm1743/go-fast-framework/config"
+	"github.com/zhoudm1743/go-fast-framework/database"
+	"github.com/zhoudm1743/go-fast-framework/facades"
+	"github.com/zhoudm1743/go-fast-framework/filesystem"
+	"github.com/zhoudm1743/go-fast-framework/foundation"
+	gohttp "github.com/zhoudm1743/go-fast-framework/http"
+	"github.com/zhoudm1743/go-fast-framework/log"
 )
 
 func main() {

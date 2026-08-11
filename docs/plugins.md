@@ -134,7 +134,7 @@ gofast-blog/
 // models.go
 package blog
 
-import "github.com/zhoudm1743/go-fast/framework/database"
+import "github.com/zhoudm1743/go-fast-framework/database"
 
 type Post struct {
     database.Model
@@ -157,8 +157,8 @@ type Comment struct {
 package blog
 
 import (
-    "github.com/zhoudm1743/go-fast/framework/contracts"
-    "github.com/zhoudm1743/go-fast/framework/foundation"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/foundation"
 )
 
 // ServiceProvider Blog 插件服务提供者。
@@ -318,8 +318,8 @@ blog:
 
 ### 8.2 依赖原则
 
-- 插件应 **仅依赖 `github.com/zhoudm1743/go-fast/framework/foundation` 和 `github.com/zhoudm1743/go-fast/framework/contracts`**
-- **不要依赖** `github.com/zhoudm1743/go-fast/framework/facades`（避免循环依赖）
+- 插件应 **仅依赖 `github.com/zhoudm1743/go-fast-framework/foundation` 和 `github.com/zhoudm1743/go-fast-framework/contracts`**
+- **不要依赖** `github.com/zhoudm1743/go-fast-framework/facades`（避免循环依赖）
 - 如需提供便捷函数，在插件包内自行实现（见 `facade.go`）
 
 ### 8.3 配置约定

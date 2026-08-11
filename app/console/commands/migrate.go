@@ -2,9 +2,9 @@ package commands
 
 import (
 	"github.com/zhoudm1743/go-fast/app/models"
-	"github.com/zhoudm1743/go-fast/framework/contracts"
-	"github.com/zhoudm1743/go-fast/framework/facades"
-	fast "github.com/zhoudm1743/go-fast/framework/fast"
+	"github.com/zhoudm1743/go-fast-framework/contracts"
+	"github.com/zhoudm1743/go-fast-framework/facades"
+	fast "github.com/zhoudm1743/go-fast-framework/fast"
 )
 
 // MigrateCommand 数据库迁移命令。

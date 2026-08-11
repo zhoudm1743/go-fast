@@ -26,7 +26,7 @@ var (
 ```go
 import (
     "errors"
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 if err := facades.DB().Query().First(&user, "id = ?", id); err != nil {
@@ -169,7 +169,7 @@ import (
     "errors"
     "net/http"
 
-    "github.com/zhoudm1743/go-fast/framework/contracts"
+    "github.com/zhoudm1743/go-fast-framework/contracts"
 )
 
 // HandleDBError 将数据库错误转换为 HTTP 响应

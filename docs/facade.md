@@ -28,7 +28,7 @@
 返回全局 `foundation.Application` 实例，可直接调用容器方法和应用方法。
 
 ```go
-import "github.com/zhoudm1743/go-fast/framework/facades"
+import "github.com/zhoudm1743/go-fast-framework/facades"
 
 app := facades.App()
 
