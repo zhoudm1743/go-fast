@@ -3,7 +3,7 @@
 > GoFast -- 一个轻量、可扩展的 Go 语言快速开发框架。整合 IoC 容器、ServiceProvider 生命周期、Facade 门面、Go 配置文件、结构化日志、GORM 数据库、验证器和可插拔文件存储等企业级能力，帮助团队以最少样板代码搭建可靠的后端服务。
 
 [![Go Version](https://img.shields.io/badge/Go-1.25+-blue.svg)](https://go.dev/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ---
 

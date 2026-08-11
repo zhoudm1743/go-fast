@@ -27,4 +27,4 @@ storage/
 # Config (may contain secrets)
 # config.yaml
 
-plugins/
+plugins/example/example

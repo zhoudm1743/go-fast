@@ -12,6 +12,7 @@ import (
 // fastKernel 实现 contracts.Fast。
 type fastKernel struct {
 	commands map[string]contracts.ConsoleCommand
+	log      contracts.Log
 }
 
 func newKernel() *fastKernel {
@@ -31,12 +32,33 @@ func newKernel() *fastKernel {
 	return k
 }
 
+// SetLogger 注入日志服务，供异步命令输出错误。
+func (k *fastKernel) SetLogger(l contracts.Log) {
+	k.log = l
+}
+
 // ─── contracts.Fast 实现 ────────────────────────────────────────────────────
 
 func (k *fastKernel) Register(commands []contracts.ConsoleCommand) {
 	for _, cmd := range commands {
 		k.commands[cmd.Signature()] = cmd
 	}
+}
+
+func (k *fastKernel) Run(args []string) error {
+	if len(args) == 0 {
+		args = []string{"list"}
+	}
+
+	// --sync 标志 → 同步执行；默认异步执行
+	sync, filtered := stripFlag(args, "--sync")
+	if sync {
+		return k.dispatch(filtered)
+	}
+	// 过滤 --async（兼容显式异步标志）
+	filtered = removeFlag(filtered, "--async")
+	go k.dispatch(filtered)
+	return nil
 }
 
 func (k *fastKernel) Call(command string) error {
@@ -47,19 +69,48 @@ func (k *fastKernel) Call(command string) error {
 	return k.Run(parts)
 }
 
-func (k *fastKernel) Run(args []string) error {
+func (k *fastKernel) RunSync(args []string) error {
 	if len(args) == 0 {
-		// 无参数时显示命令列表
-		return k.Run([]string{"list"})
+		args = []string{"list"}
+	}
+	return k.dispatch(removeFlag(args, "--async"))
+}
+
+func (k *fastKernel) CallSync(command string) error {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return fmt.Errorf("fast: empty command string")
+	}
+	return k.RunSync(parts)
+}
+
+func (k *fastKernel) RunAsync(args []string) {
+	if len(args) == 0 {
+		args = []string{"list"}
+	}
+	go k.dispatch(removeFlag(args, "--sync"))
+}
+
+func (k *fastKernel) CallAsync(command string) {
+	parts := strings.Fields(command)
+	if len(parts) == 0 {
+		return
+	}
+	k.RunAsync(parts)
+}
+
+// dispatch 实际分发执行命令（同步）。
+func (k *fastKernel) dispatch(args []string) error {
+	if len(args) == 0 {
+		return k.dispatch([]string{"list"})
 	}
 
 	sig := args[0]
 	rest := args[1:]
 
-	// --help / -h 转发到 help 命令
 	for _, a := range rest {
 		if a == "--help" || a == "-h" {
-			return k.Run([]string{"help", sig})
+			return k.dispatch(append([]string{"help", sig}, removeFlag(rest, "--help")...))
 		}
 	}
 
@@ -72,11 +123,47 @@ func (k *fastKernel) Run(args []string) error {
 		return fmt.Errorf("command not found: %s", sig)
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			msg := fmt.Sprintf("[GoFast] fast command %q panic: %v", sig, r)
+			if k.log != nil {
+				k.log.Error(msg)
+			} else {
+				fmt.Fprintf(os.Stderr, "%s\n", msg)
+			}
+		}
+	}()
+
 	ext := cmd.Extend()
 	options, positional := parseArgs(rest, ext.Flags)
 	ctx := newConsoleContext(positional, options)
 
 	return cmd.Handle(ctx)
+}
+
+// stripFlag 检测 args 中是否包含指定的 flag，返回是否命中 + 去除该 flag 后的参数。
+func stripFlag(args []string, flag string) (bool, []string) {
+	var filtered []string
+	var found bool
+	for _, a := range args {
+		if a == flag {
+			found = true
+			continue
+		}
+		filtered = append(filtered, a)
+	}
+	return found, filtered
+}
+
+// removeFlag 从 args 中去除所有匹配的 flag。
+func removeFlag(args []string, flag string) []string {
+	var filtered []string
+	for _, a := range args {
+		if a != flag {
+			filtered = append(filtered, a)
+		}
+	}
+	return filtered
 }
 
 // ─── 参数解析 ──────────────────────────────────────────────────────────────────

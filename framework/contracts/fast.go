@@ -4,10 +4,19 @@ package contracts
 type Fast interface {
 	// Register 批量注册命令列表。
 	Register(commands []ConsoleCommand)
-	// Call 以编程方式执行命令（命令签名 + 参数 + 选项拼成字符串，如 "emails --lang Chinese"）。
-	Call(command string) error
-	// Run 解析参数切片并分发执行（通常传入 os.Args[2:]）。
+	// Run 解析参数切片并分发执行（通常传入 os.Args[2:]）。默认异步执行。
+	// 加 --sync 标志可切换为同步阻塞执行。
 	Run(args []string) error
+	// Call 以编程方式执行命令。默认异步，加 --sync 可同步。
+	Call(command string) error
+	// RunSync 同步执行命令，阻塞直到命令完成并返回错误。
+	RunSync(args []string) error
+	// CallSync 同 RunSync，以字符串形式传参。
+	CallSync(command string) error
+	// RunAsync 显式异步执行命令。
+	RunAsync(args []string)
+	// CallAsync 显式异步执行命令。
+	CallAsync(command string)
 }
 
 // ConsoleCommand Fast 命令接口。

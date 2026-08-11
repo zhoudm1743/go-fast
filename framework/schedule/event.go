@@ -22,6 +22,7 @@ type event struct {
 	delayIfRun  bool
 	onOneServer bool
 	cache       contracts.Cache // 用于 OnOneServer 分布式锁（可为 nil）
+	log         contracts.Log   // 日志服务
 }
 
 func newEvent(callback func(), command string) *event {
@@ -56,16 +57,20 @@ func (e *event) run() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("[GoFast] schedule panic in task %q: %v\n", e.name, r)
+			if e.log != nil {
+				e.log.Errorf("[GoFast] schedule panic in task %q: %v", e.name, r)
+			} else {
+				fmt.Printf("[GoFast] schedule panic in task %q: %v\n", e.name, r)
+			}
 		}
 	}()
 
 	if e.callback != nil {
 		e.callback()
 	} else if e.command != "" {
-		// 通过 contracts.Fast（framework/fast.fastKernel）执行 Artisan 命令
 		if e.kernel == nil {
-			panic(fmt.Sprintf("[GoFast] schedule: kernel not injected for command task %q", e.name))
+			fmt.Printf("[GoFast] schedule: kernel not injected for command task %q, skip\n", e.name)
+			return
 		}
 		_ = e.kernel.Call(e.command)
 	}

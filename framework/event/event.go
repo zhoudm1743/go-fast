@@ -11,8 +11,10 @@ import (
 // manager 事件总线实现。
 type manager struct {
 	mu       sync.RWMutex
-	handlers map[string][]contracts.EventListener // event type key → listeners
-	events   map[string]contracts.Eventer         // event type key → event
+	handlers map[string][]contracts.EventListener
+	events   map[string]contracts.Eventer
+	log      contracts.Log
+	queueMgr contracts.Queue
 }
 
 // New 创建事件管理器。
@@ -21,6 +23,17 @@ func New() contracts.Event {
 		handlers: make(map[string][]contracts.EventListener),
 		events:   make(map[string]contracts.Eventer),
 	}
+}
+
+// SetLogger 注入日志服务，用于异步监听器的错误日志。
+func (m *manager) SetLogger(l contracts.Log) {
+	m.log = l
+}
+
+// SetQueue 注入队列服务。配置后，Enable=true 的监听器将通过队列异步执行，
+// 替代原来的 goroutine 方式，获得持久化、重试等能力。
+func (m *manager) SetQueue(q contracts.Queue) {
+	m.queueMgr = q
 }
 
 func eventKey(e contracts.Eventer) string {
@@ -68,13 +81,27 @@ func (m *manager) dispatch(event contracts.Eventer, args []contracts.EventArg) e
 	for _, l := range listeners {
 		queue := l.Queue(anyArgs...)
 		if queue.Enable {
-			// 异步队列处理（简化实现：goroutine；生产环境可接入 Queue 系统）
-			go func(listener contracts.EventListener, a []any) {
-				if err := listener.Handle(a...); err != nil {
-					// 仅记录错误，不中断其他监听器
-					fmt.Printf("[GoFast] event listener %s error: %v\n", listener.Signature(), err)
+			if m.queueMgr != nil {
+				// 接入队列系统：持久化、重试、worker 池管理
+				job := &listenerJob{listener: l}
+				queueArgs := make([]contracts.QueueArg, len(anyArgs))
+				for i, a := range anyArgs {
+					queueArgs[i] = contracts.QueueArg{Value: a}
 				}
-			}(l, anyArgs)
+				if err := m.queueMgr.Job(job, queueArgs).
+					OnQueue(queue.Queue).
+					OnConnection(queue.Connection).
+					Dispatch(); err != nil {
+					m.logError("event listener %s queue dispatch error: %v", l.Signature(), err)
+				}
+			} else {
+				// 回退：goroutine（无队列系统时）
+				go func(listener contracts.EventListener, a []any) {
+					if err := listener.Handle(a...); err != nil {
+						m.logError("event listener %s error: %v", listener.Signature(), err)
+					}
+				}(l, anyArgs)
+			}
 		} else {
 			if err := l.Handle(anyArgs...); err != nil {
 				// 同步模式：有错误则停止向后传播
@@ -95,4 +122,27 @@ type pendingEvent struct {
 
 func (p *pendingEvent) Dispatch() error {
 	return p.mgr.dispatch(p.event, p.args)
+}
+
+func (m *manager) logError(format string, args ...any) {
+	if m.log != nil {
+		m.log.Errorf(format, args...)
+		return
+	}
+	fmt.Printf("[GoFast] "+format+"\n", args...)
+}
+
+// ── listenerJob ──────────────────────────────────────────────────────
+
+// listenerJob 将 EventListener 包装为 contracts.QueueJob，使事件监听器可通过队列系统调度。
+type listenerJob struct {
+	listener contracts.EventListener
+}
+
+func (j *listenerJob) Signature() string {
+	return "event:" + j.listener.Signature()
+}
+
+func (j *listenerJob) Handle(args ...any) error {
+	return j.listener.Handle(args...)
 }

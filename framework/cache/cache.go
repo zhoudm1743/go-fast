@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"time"
 
 	redisStore "github.com/zhoudm1743/go-fast/framework/cache/redis_store"
@@ -58,7 +57,7 @@ func (m *cacheManager) Store(name string) contracts.CacheStore {
 	if s, ok := m.stores[name]; ok {
 		return s
 	}
-	panic(fmt.Sprintf("[GoFast] cache store %q not found", name))
+	return m.stores["memory"]
 }
 
 func (m *cacheManager) defaultCacheStore() contracts.CacheStore {

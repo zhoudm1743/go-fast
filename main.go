@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,7 +40,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	fmt.Println("\n[GoFast] shutting down...")
+	facades.Log().Info("[GoFast] shutting down...")
 
 	// 6. 优雅关闭（HTTP 通过 OnShutdown 钩子关闭）
 	app.Shutdown()

@@ -93,7 +93,7 @@ func (s *storage) Disk(disk string) contracts.StorageDriver {
 	if d, ok := s.drivers[disk]; ok {
 		return d
 	}
-	panic(fmt.Sprintf("[GoFast] storage disk %q not found", disk))
+	return s.drivers["local"]
 }
 
 func (s *storage) Put(file, content string) error { return s.defaultDriver().Put(file, content) }

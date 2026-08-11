@@ -16,6 +16,7 @@ type Scheduler struct {
 	events []*event
 	cache  contracts.Cache
 	kernel contracts.Fast
+	log    contracts.Log
 }
 
 // New 创建调度器。
@@ -33,6 +34,11 @@ func (s *Scheduler) SetCache(c contracts.Cache) {
 // SetKernel 注入 Fast 内核（Command 调度需要）。
 func (s *Scheduler) SetKernel(k contracts.Fast) {
 	s.kernel = k
+}
+
+// SetLogger 注入日志服务。
+func (s *Scheduler) SetLogger(l contracts.Log) {
+	s.log = l
 }
 
 // RegisterEvents 批量注册调度任务（通常由用户在启动前调用）。
@@ -54,10 +60,11 @@ func (s *Scheduler) Start() error {
 	for _, ev := range s.events {
 		ev.cache = s.cache
 		ev.kernel = s.kernel
+		ev.log = s.log
 
 		cronExpr := normalizeCron(ev.cronExpr)
 		if cronExpr == "" {
-			fmt.Printf("[GoFast] schedule: task %q has no cron expression, skipped\n", ev.name)
+			s.logf("[GoFast] schedule: task %q has no cron expression, skipped", ev.name)
 			continue
 		}
 
@@ -125,4 +132,12 @@ func normalizeCron(expr string) string {
 	default:
 		return expr
 	}
+}
+
+func (s *Scheduler) logf(format string, args ...any) {
+	if s.log != nil {
+		s.log.Warnf(format, args...)
+		return
+	}
+	fmt.Printf(format+"\n", args...)
 }

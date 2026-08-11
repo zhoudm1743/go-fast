@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -978,17 +979,22 @@ func Substr(str string, start int, length ...int) string {
 }
 
 func Random(length int) string {
+	s, _ := RandomSafe(length)
+	return s
+}
+
+// RandomSafe 生成随机字符串，失败时返回错误。
+func RandomSafe(length int) (string, error) {
 	b := make([]byte, length)
-	_, err := rand.Read(b)
-	if err != nil {
-		panic(err)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("RandomSafe: %w", err)
 	}
 	letters := "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	for i, v := range b {
 		b[i] = letters[v%byte(len(letters))]
 	}
 
-	return string(b)
+	return string(b), nil
 }
 
 // fieldsFunc splits the input string into words with preservation, following the rules defined by

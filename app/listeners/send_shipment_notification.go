@@ -1,9 +1,8 @@
 package listeners
 
 import (
-	"fmt"
-
 	"github.com/zhoudm1743/go-fast/framework/contracts"
+	"github.com/zhoudm1743/go-fast/framework/facades"
 )
 
 // SendShipmentNotification 发货通知监听器示例。
@@ -24,6 +23,6 @@ func (l *SendShipmentNotification) Queue(args ...any) contracts.EventQueue {
 
 // Handle 处理事件（args 来自 event.Handle 的返回结果）。
 func (l *SendShipmentNotification) Handle(args ...any) error {
-	fmt.Println("[Listener] SendShipmentNotification received:", args)
+	facades.Log().Infof("[Listener] SendShipmentNotification received: %v", args)
 	return nil
 }

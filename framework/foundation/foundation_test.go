@@ -674,8 +674,12 @@ func TestApplication_Validator(t *testing.T) {
 type dummyFast struct{}
 
 func (d *dummyFast) Register(commands []contracts.ConsoleCommand) {}
-func (d *dummyFast) Call(command string) error                     { return nil }
 func (d *dummyFast) Run(args []string) error                       { return nil }
+func (d *dummyFast) Call(command string) error                     { return nil }
+func (d *dummyFast) RunSync(args []string) error                   { return nil }
+func (d *dummyFast) CallSync(command string) error                 { return nil }
+func (d *dummyFast) RunAsync(args []string)                        {}
+func (d *dummyFast) CallAsync(command string)                      {}
 
 type dummyValidation struct{}
 
