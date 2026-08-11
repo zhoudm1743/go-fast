@@ -3,7 +3,7 @@ module github.com/zhoudm1743/go-fast
 go 1.25.5
 
 require (
-	github.com/zhoudm1743/go-fast-framework v0.6.0
+	github.com/zhoudm1743/go-fast-framework v0.6.1
 	golang.org/x/crypto v0.48.0
 )
 
