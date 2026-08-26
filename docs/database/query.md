@@ -1,5 +1,8 @@
 # 查询记录
 
+
+> 数据库 API 来自 `go-fast-framework` module；模型与业务查询在本仓库。见 [文档索引](../README.md)。
+
 ## Find — 查询多条
 
 ```go

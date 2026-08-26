@@ -1,5 +1,8 @@
 # 更新记录
 
+
+> 数据库 API 来自 `go-fast-framework` module；模型与业务查询在本仓库。见 [文档索引](../README.md)。
+
 ## Save — 保存所有字段
 
 `Save` 会保存模型的**全部字段**（包括零值），相当于 `UPDATE ... SET all_columns`。

@@ -1,5 +1,8 @@
 # GoFast 数据库
 
+> 数据库 API（`facades.DB()`、`database.Model` 等）来自独立 module **`github.com/zhoudm1743/go-fast-framework`**。
+> 本仓库（go-fast）仅包含模型、迁移与业务查询代码。架构说明见 [../README.md](../README.md)。
+
 <p align="center">
   <strong>与 ORM 无关 · 开箱即用 · 可插拔驱动 · 多连接管理 · PostgreSQL Schema</strong>
 </p>
@@ -32,17 +35,21 @@
 
 ## 快速开始
 
-### 安装（已内置，无需额外安装）
+### 安装
 
-GoFast 数据库模块开箱即用，只需在 `config/config.yaml` 中配置连接信息即可。
+数据库能力由 `go-fast-framework` 提供，本仓库 `go.mod` 已声明依赖，**无需额外 `go get`**。
 
 ### 配置
 
 ```yaml
-# config/config.yaml
+# config/config.yaml（本仓库）
 database:
-  driver: sqlite
-  database: database/app.db
+  default: main
+  connections:
+    main:
+      driver: gormdriver
+      engine: sqlite
+      database: database/gofast.db
 ```
 
 > 支持 MySQL / PostgreSQL / SQLite / SQL Server，详见 [连接数据库](./connecting.md)。

@@ -40,12 +40,26 @@ session:
 
 # ── 数据库 ──────────────────────────────────────
 database:
-  driver: sqlite             # sqlite / mysql / postgres / mssql
-  database: database/gofast.db
-  max_idle_conns: 10
-  max_open_conns: 100
-  conn_max_lifetime: 60      # 分钟
-  conn_max_idle_time: 30     # 分钟
+  default: main
+  connections:
+    main:
+      driver: gormdriver       # gormdriver（GORM 实现）
+      engine: sqlite           # sqlite / mysql / postgres / mssql
+      database: database/gofast.db
+      max_idle_conns: 10
+      max_open_conns: 100
+      conn_max_lifetime: 60    # 分钟
+      conn_max_idle_time: 30   # 分钟
+      log_level: info          # silent / error / warn / info
+      slow_threshold: 200      # 慢查询阈值（毫秒），0 表示不记录
+
+# ── 队列 ────────────────────────────────────────
+queue:
+  workers: 0                   # 0 表示 runtime.NumCPU()
+
+# ── 示例服务（services/test）────────────────────
+test:
+  greeting_prefix: Hello
 
 # ── 日志 ────────────────────────────────────────
 log:
@@ -71,9 +85,18 @@ filesystem:
 
 # ── 缓存 ────────────────────────────────────────
 cache:
-  driver: memory
+  driver: file               # memory / file / redis
   memory:
     shard_count: 32
     clean_interval: 60       # 秒
+  file:
+    path: storage/cache      # 缓存目录（相对于项目根）
+    clean_interval: 600      # 过期文件清理间隔（秒）
+  # redis:                   # driver=redis 时取消注释
+  #   host: 127.0.0.1
+  #   port: 6379
+  #   password: ""
+  #   db: 0
+  #   prefix: ""
 
 

@@ -1,5 +1,8 @@
 # 文件存储
 
+
+> 框架 API 来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)；业务代码在本仓库（go-fast）。架构说明见 [README.md](README.md)。
+
 ## 简介
 
 GoFast 文件存储模块提供了统一的文件操作接口，支持本地磁盘、阿里云 OSS、腾讯云 COS、MinIO 和 AWS S3 等多种驱动。  

@@ -5,7 +5,7 @@
 GoFast 定义了一套与底层 ORM 无关的**标准错误**，无论底层使用哪种驱动，错误类型保持一致：
 
 ```go
-// contracts/query.go
+// go-fast-framework/contracts/query.go（框架 module 内，非本仓库）
 var (
     ErrRecordNotFound    = errors.New("record not found")      // 查询无结果
     ErrDuplicatedKey     = errors.New("duplicated key")        // 唯一约束冲突

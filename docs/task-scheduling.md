@@ -1,5 +1,8 @@
 # 任务调度
 
+
+> 框架 API 来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)；业务代码在本仓库（go-fast）。架构说明见 [README.md](README.md)。
+
 ## 简介
 
 GoFast 任务调度基于 `robfig/cron/v3` 实现，允许你在代码中流畅地定义定时任务，而无需在服务器上手动配置 Cron。  

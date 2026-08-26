@@ -122,10 +122,14 @@ func Paginated(page, size int) func(contracts.Query) contracts.Query {
 }
 ```
 
-使用：
+使用（Scope 定义在本仓库，可放 `app/scopes/` 包或控制器同文件）：
 
 ```go
-import "github.com/zhoudm1743/go-fast/app/scopes"
+import (
+    "github.com/zhoudm1743/go-fast/app/models"
+    "github.com/zhoudm1743/go-fast/app/scopes" // 按需创建 app/scopes/ 包
+    "github.com/zhoudm1743/go-fast-framework/facades"
+)
 
 var posts []models.Post
 facades.DB().Query().

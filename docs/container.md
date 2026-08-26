@@ -1,7 +1,8 @@
 # GoFast 服务容器 API
 
-> 服务容器（IoC Container）是 GoFast 的核心引擎，负责管理所有服务的创建、缓存与解析。
+> 服务容器（IoC Container）是 GoFast 框架的核心引擎，实现位于独立 module **`github.com/zhoudm1743/go-fast-framework/foundation`**。
 > `Application` 嵌入了 `Container`，因此 `facades.App()` 即可直接调用所有容器方法。
+> 架构说明见 [README.md](README.md)。
 
 ---
 
@@ -271,7 +272,15 @@ func main() {
 | `cache` | `contracts.Cache` | `cache.ServiceProvider` | — |
 | `db` | `contracts.DB` | `database.ServiceProvider` | **推荐**，多连接管理器 |
 | `orm` | `contracts.Orm` | `database.ServiceProvider` | **Deprecated**，请迁移到 `db` |
-| `storage` | `contracts.StorageDriver` | `filesystem.ServiceProvider` | — |
-| `validator` | `contracts.Validation` | `validation.ServiceProvider` | — |
+| `storage` | `contracts.Storage` | `filesystem.ServiceProvider` | — |
+| `jwt` | `contracts.JWT` | `jwt.ServiceProvider` | — |
+| `validator` | `contracts.Validation` | `http.ServiceProvider` | 验证器（随 HTTP 一并注册） |
+| `session` | `*session.Manager` | `http.ServiceProvider` | Session（随 HTTP 一并注册） |
 | `route` | `contracts.Route` | `http.ServiceProvider` | — |
+| `fast` | `contracts.Fast` | `fast.ServiceProvider` | — |
+| `event` | `contracts.Event` | `event.ServiceProvider` | — |
+| `queue` | `contracts.Queue` | `queue.ServiceProvider` | — |
+| `schedule` | `*schedule.Scheduler` | `schedule.ServiceProvider` | — |
+| `tenant` | `contracts.TenantResolver` | `tenant.ServiceProvider` | — |
+| `test` | `services/contracts.Test` | `services/test.ServiceProvider` | 本仓库自定义示例 |
 

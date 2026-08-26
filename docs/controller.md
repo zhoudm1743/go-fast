@@ -1,6 +1,10 @@
 # GoFast 控制器开发指南
 
-> 本文介绍如何在 GoFast 中编写控制器，涵盖：控制器自注册、请求解析、表单验证、数据库操作、统一响应结构和中间件。
+> 本文介绍如何在 **go-fast** 应用骨架中编写控制器。
+> HTTP 抽象（`contracts.Context` 等）与 `facades` 均来自独立 module **`go-fast-framework`**；控制器源码在本仓库 `app/http/`。
+> 架构说明见 [README.md](README.md)。
+>
+> 涵盖：控制器自注册、请求解析、表单验证、数据库操作、统一响应结构和中间件。
 > 所有控制器代码 **只依赖 `github.com/zhoudm1743/go-fast-framework/contracts` 和 `github.com/zhoudm1743/go-fast-framework/facades`**，不引入任何底层 HTTP 框架包。
 >
 > 控制器通过实现 `contracts.Controller` 接口在 `Boot()` 中声明自己的路由，路由文件只做编排。
@@ -169,7 +173,7 @@ package controllers
 
 import (
     "net/http"
-    "go-fast/app/models"
+    "github.com/zhoudm1743/go-fast/app/models"
     "github.com/zhoudm1743/go-fast-framework/contracts"
     "github.com/zhoudm1743/go-fast-framework/facades"
 )
@@ -409,8 +413,8 @@ GoFast 推荐拆分为三份路由文件：
 package routes
 
 import (
-    adminControllers "go-fast/app/http/admin/controllers"
-    adminMiddleware "go-fast/app/http/admin/middleware"
+    adminControllers "github.com/zhoudm1743/go-fast/app/http/admin/controllers"
+    adminMiddleware "github.com/zhoudm1743/go-fast/app/http/admin/middleware"
     "github.com/zhoudm1743/go-fast-framework/contracts"
     "github.com/zhoudm1743/go-fast-framework/facades"
 )
@@ -430,8 +434,8 @@ func RegisterAdmin() {
 package routes
 
 import (
-    appControllers "go-fast/app/http/app/controllers"
-    appMiddleware "go-fast/app/http/app/middleware"
+    appControllers "github.com/zhoudm1743/go-fast/app/http/app/controllers"
+    appMiddleware "github.com/zhoudm1743/go-fast/app/http/app/middleware"
     "github.com/zhoudm1743/go-fast-framework/contracts"
     "github.com/zhoudm1743/go-fast-framework/facades"
 )

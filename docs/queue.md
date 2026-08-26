@@ -1,5 +1,8 @@
 # 队列系统
 
+
+> 框架 API 来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)；业务代码在本仓库（go-fast）。架构说明见 [README.md](README.md)。
+
 ## 简介
 
 GoFast 队列系统允许你将耗时任务推送到后台异步执行，提升应用响应速度。  

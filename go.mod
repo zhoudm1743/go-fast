@@ -3,7 +3,7 @@ module github.com/zhoudm1743/go-fast
 go 1.25.5
 
 require (
-	github.com/zhoudm1743/go-fast-framework v0.6.1
+	github.com/zhoudm1743/go-fast-framework v0.7.10
 	golang.org/x/crypto v0.48.0
 )
 
@@ -37,6 +37,7 @@ require (
 	github.com/gin-gonic/gin v1.12.0 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/glebarez/sqlite v1.11.0 // indirect
+	github.com/go-gorm/caches/v4 v4.0.5 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect

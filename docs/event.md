@@ -1,5 +1,8 @@
 # 事件系统
 
+
+> 框架 API 来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)；业务代码在本仓库（go-fast）。架构说明见 [README.md](README.md)。
+
 ## 简介
 
 GoFast 事件系统提供简单的观察者模式实现，允许订阅和监听应用中发生的各种事件。  

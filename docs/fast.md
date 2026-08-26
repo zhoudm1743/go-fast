@@ -1,5 +1,8 @@
 # GoFast Fast 控制台指南
 
+
+> 框架 API 来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)；业务代码在本仓库（go-fast）。架构说明见 [README.md](README.md)。
+
 > Fast 是 GoFast 内置的命令行工具。它提供了一系列脚手架命令，帮助你快速生成模型、控制器、服务提供者和工具类，同时支持你编写任意自定义命令。
 
 ---

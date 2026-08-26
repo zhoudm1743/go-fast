@@ -1,6 +1,8 @@
 # GoFast 快速开始
 
-> GoFast 是一个基于 Go 的快速开发框架。
+> **go-fast** 是基于 [go-fast-framework](https://github.com/zhoudm1743/go-fast-framework) 的**应用骨架**（非框架本体）。
+> 框架内核为独立 Go module，通过 `go.mod` 引入；业务代码写在本仓库，API 通过 `github.com/zhoudm1743/go-fast-framework/facades` 访问。
+> 架构说明见 [docs/README.md](README.md)。
 
 ---
 
@@ -17,7 +19,7 @@
 
 ```bash
 git clone https://github.com/zhoudm1743/go-fast.git
-cd GoFast
+cd go-fast
 ```
 
 ---
@@ -26,7 +28,7 @@ cd GoFast
 
 GoFast 支持两种配置方式：**YAML 文件** 和 **Go 源码文件**，详见 [配置说明](configuration.md)。
 
-简要示例 -- Go 配置文件 `config/app.go`：
+简要示例 — Go 配置文件 `config/server.go`（应用名等在 `server` 命名空间）：
 
 ```go
 package config
@@ -34,9 +36,10 @@ package config
 import fwconfig "github.com/zhoudm1743/go-fast-framework/config"
 
 func init() {
-    fwconfig.Add("app", map[string]any{
-        "name":  "GoFast",
-        "debug": false,
+    fwconfig.Add("server", map[string]any{
+        "name": "GoFast",
+        "port": 3000,
+        "mode": "debug",
     })
 }
 ```
@@ -78,15 +81,15 @@ go run main.go
 
 ## 五、启动流程
 
-GoFast 的启动流程与 Goravel 对齐，核心只有三步：
+GoFast 的启动流程：
 
 ```
 main.go
-  └── bootstrap.Boot()
-        ├── 1. foundation.NewApplication(".")     // 创建应用 & 容器
-        ├── 2. app.SetProviders(providers())      // 设置 Provider 列表
-        ├── 3. app.Boot()                         // Register → Boot 全部 Provider
-        └── 4. facades.SetApp(app)                // 设置全局门面入口
+  └── bootstrap.Boot()          ← 本仓库 bootstrap/app.go
+        ├── foundation.NewApplication(".")   ← go-fast-framework
+        ├── app.SetProviders(providers())
+        ├── app.Boot()
+        └── facades.SetApp(app)             ← go-fast-framework/facades
 ```
 
 内置 Provider 按顺序加载：
@@ -96,10 +99,16 @@ main.go
 | 1 | `config.ServiceProvider` | `config` | 读取配置文件 |
 | 2 | `log.ServiceProvider` | `log` | 初始化日志（依赖 config） |
 | 3 | `cache.ServiceProvider` | `cache` | 初始化缓存（依赖 config） |
-| 4 | `database.ServiceProvider` | `db` / ~~`orm`~~ | 连接数据库（依赖 config + log）；`orm` 已 Deprecated |
-| 5 | `filesystem.ServiceProvider` | `storage` | 文件系统（依赖 config） |
-| 6 | `validation.ServiceProvider` | `validator` | 验证器 |
-| 7 | `http.ServiceProvider` | `route` | HTTP 路由（依赖 config） |
+| 4 | `tenant.ServiceProvider` | `tenant` | 租户上下文解析（依赖 config） |
+| 5 | `database.ServiceProvider` | `db` / ~~`orm`~~ | 连接数据库（依赖 config + log）；`orm` 已 Deprecated |
+| 6 | `filesystem.ServiceProvider` | `storage` | 文件系统（依赖 config） |
+| 7 | `jwt.ServiceProvider` | `jwt` | JWT 鉴权 |
+| 8 | `http.ServiceProvider` | `route` | HTTP 路由（依赖 config） |
+| 9 | `fast.ServiceProvider` | `fast` | 控制台内核 |
+| 10 | `event.ServiceProvider` | `event` | 事件系统 |
+| 11 | `queue.ServiceProvider` | `queue` | 队列系统 |
+| 12 | `schedule.ServiceProvider` | `schedule` | 任务调度 |
+| 13 | `test.ServiceProvider` | `test` | 自定义示例服务（见 `services/test`） |
 
 ---
 

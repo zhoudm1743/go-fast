@@ -1,5 +1,8 @@
 # 原生 SQL
 
+
+> 数据库 API 来自 `go-fast-framework` module；模型与业务查询在本仓库。见 [文档索引](../README.md)。
+
 ## Raw — 原生查询
 
 当 Query Builder 无法表达复杂 SQL 时，使用 `Raw` 直接执行：

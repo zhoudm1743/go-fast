@@ -1,5 +1,8 @@
 # GoFast 配置说明
 
+> 本文描述 **go-fast** 应用骨架的配置方式。配置读写 API（`facades.Config()`）来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)。
+> 架构说明见 [README.md](README.md)。
+
 > GoFast 支持两种配置方式：YAML 配置文件 和 Go 源代码配置文件。两者可同时使用，YAML 中的值会覆盖 Go 配置中的同名键。
 
 ---
@@ -35,8 +38,7 @@ Go 配置文件 (config/*.go init)  <  YAML 文件 (config/config.yaml)  <  运�
 
 | 文件 | 命名空间 | 说明 |
 |------|---------|------|
-| `config/app.go` | `app` | 应用基本信息 |
-| `config/server.go` | `server` | HTTP 服务器 |
+| `config/server.go` | `server` | HTTP 服务器（含应用名 `server.name`） |
 | `config/jwt.go` | `jwt` | JWT 鉴权 |
 | `config/view.go` | `view` | 模板引擎 |
 | `config/session.go` | `session` | 会话管理 |
@@ -44,6 +46,8 @@ Go 配置文件 (config/*.go init)  <  YAML 文件 (config/config.yaml)  <  运�
 | `config/log.go` | `log` | 日志 |
 | `config/filesystem.go` | `filesystem` | 文件存储 |
 | `config/cache.go` | `cache` | 缓存 |
+| `config/queue.go` | `queue` | 队列 worker 池 |
+| `config/test.go` | `test` | 示例服务（services/test） |
 
 ### 编写自己的配置文件
 
@@ -267,14 +271,28 @@ mode := facades.Config().Env("APP_MODE", "development")
 
 | 键 | 类型 | 默认值 | 说明 |
 |----|------|--------|------|
-| `cache.driver` | string | `memory` | 缓存驱动：memory / redis |
+| `cache.driver` | string | `file` | 缓存驱动：memory / file / redis |
 | `cache.memory.shard_count` | int | `32` | 内存分片数 |
-| `cache.memory.clean_interval` | int | `60` | 清理间隔（秒） |
-| `cache.redis.host` | string | `127.0.0.1` | Redis 主机地址 |
+| `cache.memory.clean_interval` | int | `60` | 内存缓存清理间隔（秒） |
+| `cache.file.path` | string | `storage/cache` | 文件缓存目录（相对于项目根） |
+| `cache.file.clean_interval` | int | `600` | 文件缓存过期清理间隔（秒） |
+| `cache.redis.host` | string | `""` | Redis 主机地址；**非空时框架会尝试连接**（即使 driver=file，也仅为 `Store("redis")` 可用） |
 | `cache.redis.port` | int | `6379` | Redis 端口 |
 | `cache.redis.password` | string | `""` | Redis 密码 |
 | `cache.redis.db` | int | `0` | Redis 数据库编号 |
 | `cache.redis.prefix` | string | `""` | 缓存键前缀 |
+
+### queue -- 队列
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `queue.workers` | int | `0` | 同步驱动 worker 数量，`0` 表示 `runtime.NumCPU()` |
+
+### test -- 示例服务
+
+| 键 | 类型 | 默认值 | 说明 |
+|----|------|--------|------|
+| `test.greeting_prefix` | string | `Hello` | 问候语前缀（`services/test` 使用） |
 
 ---
 

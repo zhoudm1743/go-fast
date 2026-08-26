@@ -1,5 +1,8 @@
 # GoFast 路由设计指南
 
+
+> 框架 API 来自独立 module [`go-fast-framework`](https://github.com/zhoudm1743/go-fast-framework)；业务代码在本仓库（go-fast）。架构说明见 [README.md](README.md)。
+
 > 本文介绍 GoFast 的 HTTP 路由体系：路由注册、控制器声明、路由组、中间件策略和静态资源。
 > GoFast 支持 **Gin** 和 **Fiber** 双引擎驱动，通过配置文件切换，业务代码无需改动。
 
@@ -231,8 +234,8 @@ func Register() {
 package routes
 
 import (
-    adminCtrl "go-fast/app/http/admin/controllers"
-    "go-fast/app/http/admin/middleware"
+    adminCtrl "github.com/zhoudm1743/go-fast/app/http/admin/controllers"
+    "github.com/zhoudm1743/go-fast/app/http/admin/middleware"
     "github.com/zhoudm1743/go-fast-framework/contracts"
     "github.com/zhoudm1743/go-fast-framework/facades"
 )
@@ -252,7 +255,7 @@ func RegisterAdmin() {
 package routes
 
 import (
-    appCtrl "go-fast/app/http/app/controllers"
+    appCtrl "github.com/zhoudm1743/go-fast/app/http/app/controllers"
     "github.com/zhoudm1743/go-fast-framework/contracts"
     "github.com/zhoudm1743/go-fast-framework/facades"
 )

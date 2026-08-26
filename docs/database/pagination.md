@@ -1,5 +1,8 @@
 # 分页
 
+
+> 数据库 API 来自 `go-fast-framework` module；模型与业务查询在本仓库。见 [文档索引](../README.md)。
+
 ## Paginate — 快捷分页
 
 ```go

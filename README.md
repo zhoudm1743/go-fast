@@ -36,7 +36,7 @@ go run main.go
 - **配置管理** -- 支持 Go 配置文件 + YAML，点号路径访问，优先级可控
 - **日志系统** -- 基于 Zap，支持控制台/文件/混合输出，结构化字段，文件轮转
 - **数据库** -- 基于 GORM，支持 MySQL / PostgreSQL / SQLite / SQL Server，内置时序 ID 主键，多连接管理
-- **缓存系统** -- 多 Store、标签分组、原子操作、Hash
+- **缓存系统** -- 内存 / 文件 / Redis 多 Store，标签分组、原子操作、Hash，自动降级链
 - **文件存储** -- 多磁盘管理，内置本地驱动，可扩展 OSS/COS/MinIO/S3
 - **验证器** -- 基于 go-playground/validator，结构体 tag 声明式验证
 - **HTTP 路由** -- 支持 Gin / Fiber 双引擎，链式注册、路由组、中间件
@@ -50,6 +50,7 @@ go run main.go
 
 | 文档 | 说明 |
 |------|------|
+| [文档索引](docs/README.md) | 两仓库架构、import 规范、文档导航 |
 | [快速开始](docs/getting-started.md) | 环境要求、配置、启动、路由注册、模型定义 |
 | [配置说明](docs/configuration.md) | Go 配置文件与 YAML 的完整参考，所有配置项一览 |
 | [控制器开发指南](docs/controller.md) | 控制器、请求验证、数据库、中间件完整示例 |
@@ -80,21 +81,28 @@ go-fast/
 │   │       └── requests/        # 前台请求结构体
 │   ├── jobs/                    # 队列任务
 │   ├── listeners/               # 事件监听器
-│   ├── models/                  # 数据模型
-│   └── providers/               # 自定义 ServiceProvider
+│   └── models/                  # 数据模型
+├── services/                    # 业务服务层
+│   ├── contracts/               # 业务契约接口
+│   │   └── test.go
+│   └── test/                    # Test 示例服务
+│       ├── test.go
+│       ├── service_provider.go
+│       └── service_provider_test.go
 ├── bootstrap/
 │   ├── app.go                   # 应用引导 & Provider 列表
 │   └── commands.go              # Fast 命令注册入口
 ├── config/
 │   ├── config.yaml              # YAML 配置文件（覆盖 Go 默认值）
-│   ├── app.go                   # 应用配置默认值
 │   ├── cache.go                 # 缓存配置默认值
 │   ├── database.go              # 数据库配置默认值
 │   ├── filesystem.go            # 文件存储配置默认值
 │   ├── jwt.go                   # JWT 配置默认值
 │   ├── log.go                   # 日志配置默认值
+│   ├── queue.go                 # 队列配置默认值
 │   ├── server.go                # HTTP 服务配置默认值
 │   ├── session.go               # Session 配置默认值
+│   ├── test.go                  # 示例服务配置默认值
 │   └── view.go                  # 视图引擎配置默认值
 ├── database/
 │   └── migrations/              # 数据库迁移
@@ -109,6 +117,7 @@ go-fast/
 │   └── admin.go                 # 后台路由注册
 ├── storage/                     # 运行时存储
 │   ├── app/                     # 本地文件存储
+│   ├── cache/                   # 文件缓存
 │   └── logs/                    # 日志文件
 ├── main.go                      # 入口
 └── go.mod

@@ -1,8 +1,9 @@
 # GoFast 插件开发指南
 
 > 插件（Plugin）是 GoFast 中可复用、可分发的功能扩展单元。
-> 一个插件本质上是一个独立的 Go module，内部包含 **实现 + ServiceProvider**，
-> 业务方只需 `go get` 后在 `providers()` 列表中追加即可使用。
+> 一个插件本质上是一个**独立的 Go module**（与 `go-fast-framework` 同级，而非本仓库子目录），
+> 内部包含 **实现 + ServiceProvider**，业务方 `go get` 后在 `bootstrap/app.go` 的 `providers()` 中追加即可。
+> 架构说明见 [README.md](README.md)。
 
 ---
 
@@ -10,7 +11,7 @@
 
 | 维度 | 自定义 Provider | 插件 |
 |------|----------------|------|
-| 代码位置 | 项目内部（如 `sms/service_provider.go`） | 独立 Go module |
+| 代码位置 | 项目内部（如 `services/sms/`） | 独立 Go module |
 | 分发方式 | 拷贝 / mono-repo | `go get github.com/xxx/gofast-xxx` |
 | 版本管理 | 跟随主项目 | 独立 semver |
 | 适用场景 | 业务专属逻辑 | 通用能力（Redis、OSS、邮件、队列…） |
@@ -279,11 +280,16 @@ func providers() []foundation.ServiceProvider {
         &config.ServiceProvider{},
         &log.ServiceProvider{},
         &cache.ServiceProvider{},
+        &tenant.ServiceProvider{},
         &database.ServiceProvider{},
         &filesystem.ServiceProvider{},
-        &validation.ServiceProvider{},
-        &gohttp.ServiceProvider{},
-        // ↓ 追加 Blog 插件（放在 http 之后）
+        &gojwt.ServiceProvider{},
+        &gohttp.ServiceProvider{},   // 含 validator、session、route
+        &fast.ServiceProvider{},
+        &goevent.ServiceProvider{},
+        &goqueue.ServiceProvider{},
+        &goschedule.ServiceProvider{},
+        // ↓ 追加 Blog 插件
         &blog.ServiceProvider{},
     }
 }

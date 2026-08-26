@@ -1,7 +1,11 @@
 # GoFast Facade 使用说明
 
 > Facade（门面）为容器中的服务提供静态访问入口，让你在任何地方都可以直接调用 `facades.Xxx()` 而无需手动从容器解析。
-> 所有 Facade 定义在 `facades/` 包下，每个函数内部均通过 `App().MustMake(key)` 解析并断言为对应的 `contracts` 接口。
+>
+> **重要**：Facade 定义在独立 module **`github.com/zhoudm1743/go-fast-framework/facades`** 中，不在本仓库（go-fast）源码树内。
+> 业务代码通过 `go.mod` 依赖引入后使用。架构说明见 [README.md](README.md)。
+>
+> 每个 Facade 函数内部均通过 `App().MustMake(key)` 解析并断言为 `go-fast-framework/contracts` 中的接口。
 
 ---
 
@@ -88,7 +92,7 @@ driver := cfg.GetString("database.driver", "sqlite")
 dbCfg  := cfg.GetStringMap("database")
 
 // -- Go 配置文件的命名空间读取（通过 config.Add 注册）
-name := cfg.GetString("app.name", "GoFast")
+name := cfg.GetString("server.name", "GoFast")
 
 // -- 读取环境变量
 secret := cfg.Env("APP_SECRET", "default-secret")
@@ -107,7 +111,7 @@ cfg.Add("myapp", map[string]any{
 
 ## 四、facades.Log()
 
-返回 `contracts.Log`，基于 Logrus 实现，支持 6 个日志级别 + 结构化字段。
+返回 `contracts.Log`，基于 **Zap** 实现，支持 6 个日志级别 + 结构化字段。
 
 ### 接口
 
@@ -729,10 +733,12 @@ type Input struct {
 
 ## 十、Facade 内部原理
 
+以下源码位于 **`go-fast-framework/facades/`**（独立 module，非本仓库目录）。
+
 `Http` 命名空间是一个结构体，底层同样通过容器解析：
 
 ```go
-// facades/http.go
+// go-fast-framework/facades/http.go
 var Http = &httpFacade{}
 
 type httpFacade struct{}
@@ -747,23 +753,29 @@ func (h *httpFacade) JWT() contracts.JWT {
 // ...
 ```
 
-其他模块级 Facade（Cache、Log 等）仍采用顺个函数的模式：
+其他模块级 Facade（Cache、Log 等）仍采用单个函数的模式：
 
 ```go
-// facades/cache.go
+// go-fast-framework/facades/cache.go
 func Cache() contracts.Cache {
     return App().MustMake("cache").(contracts.Cache)
 }
 ```
 
-如果你新增了自定义 Provider 并注册到容器中，可以将其淖出为顶级函数或加入 `Http` 对象：
+### 应用自定义服务
+
+自定义 Provider 注册到容器后，**在本仓库（go-fast）中**通过框架 Facade 入口解析，无需也不应在本地新建 `facades/` 包：
 
 ```go
-// facades/sms.go
-func Sms() contracts.Sms {
-    return App().MustMake("sms").(contracts.Sms)
-}
+import (
+    appcontracts "github.com/zhoudm1743/go-fast/services/contracts"
+    "github.com/zhoudm1743/go-fast-framework/facades"
+)
+
+sms := facades.App().MustMake("sms").(appcontracts.Sms)
 ```
+
+若需 `facades.Sms()` 顶级函数，须在 **go-fast-framework** 仓库内新增文件（插件合入框架时使用）。详见 [ServiceProvider 文档](service-provider.md)。
 
 ---
 
