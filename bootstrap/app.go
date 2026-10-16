@@ -3,9 +3,6 @@ package bootstrap
 import (
 	_ "github.com/zhoudm1743/go-fast/config" // 触发 Go 配置文件的 init() 注册
 
-	"github.com/zhoudm1743/go-fast/app/events"
-	"github.com/zhoudm1743/go-fast/app/listeners"
-	testsvc "github.com/zhoudm1743/go-fast/services/test"
 	"github.com/zhoudm1743/go-fast-framework/cache"
 	"github.com/zhoudm1743/go-fast-framework/config"
 	"github.com/zhoudm1743/go-fast-framework/contracts"
@@ -21,10 +18,15 @@ import (
 	goqueue "github.com/zhoudm1743/go-fast-framework/queue"
 	goschedule "github.com/zhoudm1743/go-fast-framework/schedule"
 	"github.com/zhoudm1743/go-fast-framework/tenant"
+	"github.com/zhoudm1743/go-fast/app/events"
+	"github.com/zhoudm1743/go-fast/app/listeners"
+	testsvc "github.com/zhoudm1743/go-fast/services/test"
+	gofastgin "github.com/zhoudm1743/gofast-gin"
+	gormdriver "github.com/zhoudm1743/gofast-gorm"
 )
 
 // Boot 创建并引导 GoFast 应用。
-// 按声明顺序注册所有内置 ServiceProvider，然后执行 Boot。
+// 按声明顺序注册核心与驱动插件 ServiceProvider，然后执行 Boot。
 func Boot() foundation.Application {
 	app := foundation.NewApplication(".")
 
@@ -61,13 +63,15 @@ func providers() []foundation.ServiceProvider {
 		&cache.ServiceProvider{},      // 3. 缓存
 		&tenant.ServiceProvider{},     // 4. 租户上下文（database 之前）
 		&database.ServiceProvider{},   // 5. 数据库
-		&filesystem.ServiceProvider{}, // 6. 文件系统
-		&gojwt.ServiceProvider{},      // 7. JWT
-		&gohttp.ServiceProvider{},     // 8. HTTP 路由（含验证器）
-		&fast.ServiceProvider{},       // 9. 控制台
-		&goevent.ServiceProvider{},    // 10. 事件系统
-		&goqueue.ServiceProvider{},    // 11. 队列系统
-		&goschedule.ServiceProvider{}, // 12. 任务调度
-		&testsvc.ServiceProvider{},    // 13. 自定义示例服务
+		&gormdriver.ServiceProvider{}, // 6. GORM 驱动
+		&filesystem.ServiceProvider{}, // 7. 文件系统
+		&gojwt.ServiceProvider{},      // 8. JWT
+		&gohttp.ServiceProvider{},     // 9. HTTP 路由（含验证器）
+		&gofastgin.ServiceProvider{},  // 10. Gin HTTP 驱动
+		&fast.ServiceProvider{},       // 11. 控制台
+		&goevent.ServiceProvider{},    // 12. 事件系统
+		&goqueue.ServiceProvider{},    // 13. 队列系统
+		&goschedule.ServiceProvider{}, // 14. 任务调度
+		&testsvc.ServiceProvider{},    // 15. 自定义示例服务
 	}
 }
