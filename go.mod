@@ -5,14 +5,12 @@ go 1.26.4
 require (
 	fyne.io/fyne/v2 v2.8.2
 	github.com/zhoudm1743/go-fast-framework v1.5.0
-	github.com/zhoudm1743/gofast-fyne v0.0.0
+	github.com/zhoudm1743/gofast-fyne v0.1.0
 	github.com/zhoudm1743/gofast-gin v0.9.0
 	github.com/zhoudm1743/gofast-gorm v1.1.1
 	golang.org/x/crypto v0.57.0
 )
 
-// gofast-fyne 尚未发布 tag，本地开发临时指向同级仓库；发布首个 tag 后删除本行。
-replace github.com/zhoudm1743/gofast-fyne => ../gofast-fyne
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

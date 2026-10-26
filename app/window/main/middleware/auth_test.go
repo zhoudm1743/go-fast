@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/zhoudm1743/go-fast-framework/cache"
@@ -10,10 +12,20 @@ import (
 	"github.com/zhoudm1743/go-fast-framework/log"
 )
 
-// newTestApp 引导含缓存的最小应用（file 驱动写入临时目录，不污染仓库）。
+// newTestApp 引导含缓存的最小应用；缓存用 memory 驱动，
+// 避免测试间通过磁盘缓存文件相互污染。
 func newTestApp(t *testing.T) foundation.Application {
 	t.Helper()
-	app := foundation.NewApplication(t.TempDir())
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "config"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := []byte("cache:\n  driver: memory\n")
+	if err := os.WriteFile(filepath.Join(dir, "config", "config.yaml"), cfg, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	app := foundation.NewApplication(dir)
 	app.SetProviders([]foundation.ServiceProvider{
 		&config.ServiceProvider{},
 		&log.ServiceProvider{},
