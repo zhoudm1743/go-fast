@@ -99,4 +99,63 @@ cache:
   #   db: 0
   #   prefix: ""
 
+# ── gRPC ────────────────────────────────────────
+# 默认全部关闭；启用需同时在 bootstrap/providers 中注册 grpc.ServiceProvider。
+# 服务注册示例（生成代码）：
+#   pb.RegisterUserServiceServer(facades.Grpc().Server().Server(), svc)
+grpc:
+  server:
+    enabled: false           # 默认关闭，HTTP 仍是默认入口
+    host: 0.0.0.0            # 注册发现场景请改为本机可被发现的 IP/主机名
+    port: 9000
+    reflection: false        # grpc reflection
+    health: true             # 注册 grpc.health.v1 健康检查
+    registry: cache          # 注册驱动：cache / etcd / nop
+    registry_ttl: 30         # 实例失联判定秒数（心跳每 ttl/3 续期）
+    registry_service: ""     # 注册的服务名，空则取 app.name
+    registry_prefix: grpc:registry
+  registry:
+  # cache 驱动使用 cache 服务的默认 store（file/memory/redis 通吃），无需额外配置
+  # etcd 驱动配置：
+  # etcd_endpoints: ["127.0.0.1:2379"]
+  # etcd_dial_timeout: 5s
+  client:
+    watch_interval: 1s       # 实例变更轮询间隔（cache 驱动下生效）
+    default:                 # 具名连接，client.Conn()/Conn("default") 使用
+      address: "127.0.0.1:9000"   # 直连（与 target 二选一）
+      # target: "registry://user"  # 经注册发现（registry://<服务名>）
+      insecure: true
+      # cert_file: ""  key_file: ""  ca_file: ""   # TLS 三件套（insecure=false 时必填）
 
+
+
+# ── Fyne 桌面 GUI ───────────────────────────────
+# 由 gofast-fyne 驱动提供（延迟加载，CLI 场景不初始化）。
+# 菜单/托盘项：event 点击后向框架事件总线派发同名事件；
+#              action 执行内置动作（show / hide / toggle / quit）。
+fyne:
+  app_id: com.gofast.example
+  window:
+    title: GoFast 桌面示例
+    width: 900
+    height: 640
+    fixed: false
+    close: quit              # quit（关闭即退出）| hide（关闭仅隐藏，需配合托盘）
+  menu:
+    - label: 应用
+      items:
+        - label: 刷新用户列表
+          event: window.users.refresh
+        - separator: true
+        - label: 关于
+          event: app.about
+        - label: 退出
+          action: quit
+  tray:
+    enabled: false            # 桌面环境可开启；icon 相对应用根目录
+    # icon: resources/icon.png
+    # menu:
+    #   - label: 显示主窗口
+    #     action: show
+    #   - label: 退出
+    #     action: quit

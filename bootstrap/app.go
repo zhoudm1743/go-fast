@@ -21,6 +21,7 @@ import (
 	"github.com/zhoudm1743/go-fast/app/events"
 	"github.com/zhoudm1743/go-fast/app/listeners"
 	testsvc "github.com/zhoudm1743/go-fast/services/test"
+	gofastfyne "github.com/zhoudm1743/gofast-fyne"
 	gofastgin "github.com/zhoudm1743/gofast-gin"
 	gormdriver "github.com/zhoudm1743/gofast-gorm"
 )
@@ -68,10 +69,11 @@ func providers() []foundation.ServiceProvider {
 		&gojwt.ServiceProvider{},      // 8. JWT
 		&gohttp.ServiceProvider{},     // 9. HTTP 路由（含验证器）
 		&gofastgin.ServiceProvider{},  // 10. Gin HTTP 驱动
-		&fast.ServiceProvider{},       // 11. 控制台
-		&goevent.ServiceProvider{},    // 12. 事件系统
-		&goqueue.ServiceProvider{},    // 13. 队列系统
-		&goschedule.ServiceProvider{}, // 14. 任务调度
-		&testsvc.ServiceProvider{},    // 15. 自定义示例服务
+		&gofastfyne.ServiceProvider{}, // 11. Fyne 桌面 GUI 驱动（延迟加载）
+		&fast.ServiceProvider{},       // 12. 控制台
+		&goevent.ServiceProvider{},    // 13. 事件系统
+		&goqueue.ServiceProvider{},    // 14. 队列系统
+		&goschedule.ServiceProvider{}, // 15. 任务调度
+		&testsvc.ServiceProvider{},    // 16. 自定义示例服务
 	}
 }
